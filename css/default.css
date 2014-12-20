@@ -1,0 +1,232 @@
+/*                                                                                                        CSS reseter */
+
+html,body,p,div,h1,h2,h3,h4,h5,h6,img,article,section {
+    margin: 0;
+    padding: 0;
+}
+
+/*                                                                                                            GENERAL */
+
+html {
+    font-family: 'Source Sans Pro', sans-serif;
+}
+
+body {
+    position: absolute;
+    /*background: url('/images/background_blurred.jpg') no-repeat fixed;*/
+    background: #EEEEEE;
+    width: 100%;
+    /*min-height: 1500px; /*DEBUG*/
+}
+
+a {
+    text-decoration: none;
+    color: black;
+    border-bottom: 1px dashed black;
+}
+
+p {
+    text-align: justify;
+    font-size: 1.3em;
+    margin-bottom: 20px;
+}
+
+::selection {
+    background: rgba(0,0,0,0.3);
+    text-shadow: 1px 1px 1px white;
+}
+
+::-moz-selection {
+    background: rgba(0,0,0,0.3);
+    text-shadow: 1px 1px 1px white;
+}
+
+blockquote {
+    font-style: italic;
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.2em;
+    opacity: 0.5;
+}
+
+code {
+    font-family: 'Inconsolata';
+    font-size: 0.8em;
+}
+
+code::-moz-selection {
+    background: white;
+    text-shadow: none;
+}
+
+li {
+    list-style-type: square;
+}
+
+/*                                                                                                             HEADER */
+
+header {
+    border: 1px solid black; /*DEBUG*/
+    position: fixed;
+    box-sizing: border-box;
+    width: 100%;
+    height: 60px;
+    background: linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.7));
+    border-bottom: 3px solid black;
+}
+
+header > a {
+    /*box-sizing: border-box;*/
+    display: inline-block;
+    height: 100%;
+    width: 120px;
+    text-align: center;
+    line-height: 60px;
+    text-transform: uppercase;
+    color: rgba(200,200,200,1);
+    transition: background 0.35s;
+    border: none;
+}
+
+header > a:hover:not([href$="rss.xml"]) {
+    background: rgba(0,0,0,1);
+}
+
+a[href$="rss.xml"] {
+    position: absolute;
+    right: 10px;
+    opacity: 0.7;
+    transition: opacity 0.5s;
+}
+
+a[href$="rss.xml"]:hover {
+    opacity: 1.0;
+}
+
+header img {
+    height: 100%;
+}
+
+/*                                                                                                            CONTENT */
+
+h1 {
+    text-transform: uppercase;
+    height: 60px;
+    line-height: 60px;
+    text-align: center;
+    /*background: linear-gradient(rgb(200,200,200), rgb(220,220,220));*/
+    background: rgb(245,245,245);
+    box-shadow: 0px 0px 2px 0px gray;
+    margin-bottom: 30px;
+    text-shadow: 1px 1px 2px white;
+}
+
+h2 {
+    text-align: center;
+    color: rgba(0,0,0,0.7);
+    border-bottom: 1px solid rgba(0,0,0,0.2);
+}
+
+h3 {
+    color: rgba(0,0,0,0.7);
+    margin-top: 10px;
+    font-size: 1.5em;
+}
+
+h4 {
+    text-decoration: underline;
+    margin-top: 10px;
+    background: linear-gradient(90deg, rgba(0,0,0,0.1), rgba(0,0,0,0.0));
+}
+
+h4:before {
+    content: "> ";
+}
+
+#content {
+    margin-top: 70px;
+    width: 1200px;
+    margin-left: calc(50% - 600px);
+}
+
+#left_panel {
+    box-sizing: border-box;
+    display: inline-block;
+    vertical-align: top;
+    /*border: 1px solid red; /*DEBUG*/
+    width: 45%;
+    /*padding: 30px;*/
+}
+
+#last_articles, #last_messages, #last_tweets, #article_list {
+    background: rgb(245,245,245);
+    box-shadow: 0px 1px 1px rgba(0,0,0,0.2);
+}
+
+#last_articles h3 {
+    color: rgba(0,0,0,0.7);
+    background: url("/images/lambda.png") no-repeat;
+    background-size: contain;
+    padding-left: 20px;
+}
+
+#last_messages {
+    margin-top: 50px;
+}
+
+#last_messages h3 {
+    background: url("/images/envelope.png") no-repeat;
+    background-size: contain;
+    padding-left: 50px;
+}
+
+.recent_article, .article {
+    margin-top: 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.2);
+    padding: 7px 10px;
+}
+
+.post_description {
+    font-style: italic;
+    color: rgba(0,0,0,0.6);
+    font-size: 0.9em;
+    transition: color 0.5s;
+}
+
+.post_description:hover {
+    color: rgba(0,0,0,0.9);
+}
+
+.date_article {
+    display: inline-block;
+    width: 100%;
+    text-align: right;
+    color: rgba(0,0,0,0.9);
+    font-size: 0.9em;
+}
+
+
+#right_panel {
+    box-sizing: border-box;
+    display: inline-block;
+    vertical-align: top;
+    /*border: 1px solid green; /*DEBUG*/
+    width: 45%;
+    margin-left: 115px;
+    text-align: right;
+}
+
+/*                                                                                                           ARTICLES */
+#article_list {
+    margin: 0;
+    padding: 0;
+    text-indent: 0px;
+}
+
+#article_list > li {
+    list-style-type: none;
+}
+
+#article_list a {
+    display: block;
+    border: none;
+}

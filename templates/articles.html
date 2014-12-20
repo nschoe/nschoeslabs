@@ -1,0 +1,18 @@
+Here is what I wrote so far, hope you find something of interest.<br>
+If you have any suggestions, please <a href="contact.html">contact me</a>.
+
+<ul id="article_list">
+    $for(articles)$
+        <li>
+            <a href="$url$">
+                 <div class="article">
+                    <h3>$title$</h3>
+                    <p class="post_description">$description$
+                        <br>
+                        <span class="date_article">$date$</span>
+                    </p>
+                </div>
+            </a>
+        </li>
+    $endfor$
+</ul>

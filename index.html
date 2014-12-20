@@ -1,0 +1,57 @@
+---
+title: Welcome Home !
+---
+
+<section id="left_panel">
+    <div id="last_articles">
+        <h2>Last Articles</h2>
+        $for(lastTwoArticles)$
+            <div class="recent_article">
+                <h3>$title$</h3>
+                <p class="post_description">
+                    $description$
+                    <br>
+                    <span class="date_article">$date$</span>
+                </p>
+            </div>
+        $endfor$
+    </div>
+
+    <div id="last_messages">
+        <h2>Last Messages</h2>
+        $for(lastTwoMessages)$
+            <div class="recent_article">
+                <h3>$title$</h3>
+                <p class="post_description">
+                    $body$
+                    <br>
+                    <span class="date_article">$date$</span>
+                </p>
+            </div>
+        $endfor$
+    </div>
+</section>
+
+<section id="right_panel">
+    <div id="last_tweets">
+        <a  class="twitter-timeline"
+            href="https://twitter.com/ns_schoe"
+            data-widget-id="545190988923568128"
+            data-chrome="transparent nofooter">
+            Tweets by @ns_schoe
+        </a>
+        <script async>
+            !function(d,s,id)
+            {
+                var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';
+                if (!d.getElementById(id))
+                {
+                    js=d.createElement(s);
+                    js.id=id;
+                    js.src=p+"://platform.twitter.com/widgets.js";
+                    fjs.parentNode.insertBefore(js,fjs);
+                }
+            }(document,"script","twitter-wjs");
+        </script>
+    </div>
+</section>
