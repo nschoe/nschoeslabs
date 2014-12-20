@@ -15,7 +15,11 @@ main = hakyll $ do
         route   idRoute
         compile compressCssCompiler
 
-    match (fromList ["about.md", "contact.markdown", "haskell.md", "ai.md", "webrtc.md"]) $ do
+    match "favicon.gif" $ do
+        route idRoute
+        compile copyFileCompiler
+
+    match (fromList ["about.md", "haskell.md", "ai.md", "webrtc.md"]) $ do
         route   $ setExtension "html"
         compile $ pandocCompiler
             >>= loadAndApplyTemplate "templates/default.html" defaultContext
@@ -25,6 +29,7 @@ main = hakyll $ do
             route $ setExtension "html"
             compile $ pandocCompiler
                 >>= loadAndApplyTemplate "templates/article.html" articleCtx
+                >>= saveSnapshot "renderedArticles"
                 >>= loadAndApplyTemplate "templates/default.html" articleCtx
                 >>= relativizeUrls
 
@@ -51,21 +56,6 @@ main = hakyll $ do
         compile $ getResourceBody
                 >>= relativizeUrls
 
-    -- create ["archive.html"] $ do
-    --     route idRoute
-    --     compile $ do
-    --         articles <- recentFirst =<< loadAll "articles/*"
-    --         let archiveCtx =
-    --                 listField "articles" articlesCtx (return articles) `mappend`
-    --                 constField "title" "Archives"            `mappend`
-    --                 defaultContext
-
-    --         makeItem ""
-    --             >>= loadAndApplyTemplate "templates/archive.html" archiveCtx
-    --             >>= loadAndApplyTemplate "templates/default.html" archiveCtx
-    --             >>= relativizeUrls
-
-
     match "index.html" $ do
         route idRoute
         compile $ do
@@ -80,6 +70,14 @@ main = hakyll $ do
                 >>= loadAndApplyTemplate "templates/default.html" indexCtx
                 >>= relativizeUrls
 
+    create ["rss.xml"] $ do
+        route idRoute
+        compile $ do
+            let feedCtx = articleCtx `mappend` bodyField "description"
+            articles <- fmap (take 10) . recentFirst =<<
+                loadAllSnapshots "articles/*" "renderedArticles"
+            renderRss nschoeslabsRSSConfig feedCtx articles
+
     match "templates/*" $ compile templateCompiler
 
 
@@ -89,12 +87,13 @@ articleCtx =
     dateField "date" "%B %e, %Y" `mappend`
     defaultContext
 
--- lastTwoArticlesCtx :: Context String
--- lastTwoArticlesCtx =
---     dateField "date" "%b %e, %Y" `mappend`
---     defaultContext
+--------------------------------------------------------------------------------
 
--- lastMessagesCtx :: Context String
--- lastMessagesCtx =
---     dateField "date" "%b %e, %Y" `mappend`
---     defaultContext
+nschoeslabsRSSConfig :: FeedConfiguration
+nschoeslabsRSSConfig = FeedConfiguration
+    { feedTitle       = "nschoe's labs"
+    , feedDescription = "Haskell, Artificial Intelligence and WebRTC."
+    , feedAuthorName  = "Nicolas SCHOEMAEKER"
+    , feedAuthorEmail = "ns.schoe@gmail.com"
+    , feedRoot        = "http://www.nschoeslabs.com"
+    }
