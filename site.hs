@@ -6,7 +6,7 @@ import           Hakyll
 
 --------------------------------------------------------------------------------
 main :: IO ()
-main = hakyll $ do
+main = hakyllWith config $ do
     match "images/*" $ do
         route   idRoute
         compile copyFileCompiler
@@ -96,4 +96,12 @@ nschoeslabsRSSConfig = FeedConfiguration
     , feedAuthorName  = "Nicolas SCHOEMAEKER"
     , feedAuthorEmail = "ns.schoe@gmail.com"
     , feedRoot        = "http://www.nschoeslabs.com"
+    }
+
+--------------------------------------------------------------------------------
+
+config :: Configuration
+config = defaultConfiguration
+    {
+        deployCommand = "rsync -avz -e ssh ./_site/ nschoe@nschoe.com:public_html/"
     }
