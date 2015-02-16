@@ -10,6 +10,9 @@ Today we are going to build an audio/video communication app with WebRTC, and th
 WebRTC is a new technology that allows peer-to-peer (multimedia) communications. It is not intended for browsers in particular, but it is true that the simplest (_read "easiest to use"_) APIs are implemented in Javascript and thus, we will use these.
 
 ### What does WebRTC bring to the table, and what can we do with it?
+
+![WebRTC logo](/images/webRTC_logo.png "WebRTC Logo")
+
 In this world today, all we can hear is about "[The Cloud](http://betabeat.com/2013/03/chrome-extension-replaces-every-instance-of-the-cloud-with-the-far-superior-my-butt/)". While it has some advantages (data is synchronized across all our devices, it is backed up in case of failure, etc) it does have some drawbacks (data is hosted on private companies that can analyze and sell it, these big servers are the target of some criminal attacks, etc).  
 WebRTC is **not** a replacement for the Cloud, it has nothing to do with it, but it brings some interesting features:  
 
@@ -29,6 +32,8 @@ Well... ready when you are!
 Just go grab a bottle of Coke, go buy some candies (_sugar my friend, sugar..._) and listen to some good music (_may I suggest Led Zeppelin, Kashmir?_) and then we are good to go!
 
 ## Let's do This: Skype-like Application in Browser!
+
+![](/images/webRTC_peer-to-peer.png "Let's build a peer-to-peer application")
 
 ### A Little Word on the Workflow
 You can find the code for that article on my [github repo](https://github.com/nschoe/webrtc-fun-part-1).  
@@ -651,6 +656,9 @@ And now the methods, you will have to call them to build your application:
 **Important**: this is quite honestly hidden too deep in the documentation, but I'll say it here: the whole ICE process (gathering candidates, etc) will not begin before you called `setLocalDescription()`. You might spend some awful lot of time trying to debug your WebRTC application with `console.log([insert insulting debugging messages here])` and the answer might just be that: `setLocalDescription()` is not called (at the right time). So keep that in mind.
 
 ### Some Code Now, Please
+
+![](/images/some_code.png "Give me some code!")
+
 Is this the moment? The one?  
 Yes it is! Enjoy!
 
@@ -1214,7 +1222,8 @@ And tada!
 Now you should have a basic, Skype-like application in your browser. It comes with comparable bitrate and quality (especially since the new WebRTC 1.0 review, where H.264 can be used as a video codec, VP8 was the only one before). The media is truly peer-to-peer, so your media data flow from your computer to your peer's, with no proxy (see the following paragraph on that note).  
 I hope you enjoyed reading the article, and that I was clear enough. I am aware this is a pretty long article, but I did not want to simply give three lines of codes and "voilà!". I wanted to give you a sense of what was happening _under the hood_ and **more importantly** I wanted to write down the tricky parts like the fact that you have to add the stream to the `RTCPeerConnection` before calling `set{Local,Remote}Description`, because it is often omitted in the code examples that you might have seen on the web.
 
-[Any feedback is appreciated!](mailto:ns.schoe@gmail.com)
+[Any feedback is appreciated!](mailto:ns.schoe@gmail.com)  
+You can find the whole code for the Skype-like application [here](https://github.com/nschoe/fun-with-WebRTC-part-1/tree/master/2_skype-like).
 
 ### What we did
 In this simple application, we used the most talked about feature of WebRTC: peer-to-peer _media_ communication. We created a simple Skype-like application to transmit video and audio data between two peers.  

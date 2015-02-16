@@ -116,7 +116,8 @@ header img {
     left: 0;
     top: 57px;
     height: 3px;
-    background: rgb(148, 194, 228);
+    background: rgb(100, 194, 228);
+    /*background: rgb(148, 194, 228);*/
     transition: width 0.5s;
 }
 
@@ -248,10 +249,11 @@ h4:before {
 .figure {
     /*border: 1px solid black;*/
     text-align: center;
+    margin-top: 10px;
 }
 
 .figure img {
-    box-shadow: 0px 0px 5px 1px rgba(200,200,200,1);
+    /*box-shadow: 0px 0px 5px 1px rgba(200,200,200,1);*/
 }
 
 .caption {
