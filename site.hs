@@ -15,9 +15,14 @@ main = hakyllWith config $ do
         route   idRoute
         compile compressCssCompiler
 
+    match "javascript/*" $ do
+        route idRoute
+        compile copyFileCompiler
+
     match "favicon.gif" $ do
         route idRoute
         compile copyFileCompiler
+
 
     match (fromList ["about.md", "haskell.md", "ai.md", "webrtc.md"]) $ do
         route   $ setExtension "html"

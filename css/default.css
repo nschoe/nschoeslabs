@@ -68,7 +68,6 @@ td, tr, th {
 /*                                                                                                             HEADER */
 
 header {
-    border: 1px solid black; /*DEBUG*/
     position: fixed;
     box-sizing: border-box;
     width: 100%;
@@ -109,6 +108,16 @@ a[href$="rss.xml"]:hover {
 
 header img {
     height: 100%;
+}
+
+#scrollBar {
+    box-sizing: border-box;
+    position: fixed;
+    left: 0;
+    top: 57px;
+    height: 3px;
+    background: rgb(148, 194, 228);
+    transition: width 0.5s;
 }
 
 /*                                                                                                            CONTENT */
