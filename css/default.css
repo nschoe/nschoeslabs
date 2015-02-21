@@ -5,6 +5,22 @@ html,body,p,div,h1,h2,h3,h4,h5,h6,img,article,section {
     padding: 0;
 }
 
+/*                                                                                                         LOAD FONTS */
+/*@font-face {
+    font-family: dancingScript;
+    src: url('/fonts/dancing_script.ttf');
+}
+
+@font-face {
+    font-family: inconsolata;
+    src: url('/fonts/inconsolata.otf');
+}
+
+@font-face {
+    font-family: oxygen;
+    src: url('/fonts/oxygen.otf');
+}*/
+
 /*                                                                                                            GENERAL */
 
 html {
@@ -50,7 +66,8 @@ blockquote {
 }
 
 ul li {
-    list-style-type: square;
+    /*list-style-type: square;*/
+    list-style-image: url('/images/bullet_point.png');
     /*font-size: 1.2em;*/
     text-align: justify;
 }
@@ -63,6 +80,11 @@ table {
 td, tr, th {
     border: 1px solid black;
     padding: 3px;
+}
+
+img[src$="warning.png"] {
+    float: left;
+    margin-right: 10px;
 }
 
 /*                                                                                                             HEADER */
@@ -121,11 +143,36 @@ header img {
     transition: width 0.5s;
 }
 
+#toc {
+    background: url('/images/toc.png') no-repeat center right;
+}
+
+#toc ul {
+    transition: opacity, 0.5s;
+}
+
+ul.tocHover a {
+    color: rgba(0,0,0,0.4);
+}
+
+#toc a {
+    border: none;
+    display: inline-block;
+    width: calc(100% - 20px);
+    transition: margin-left, 0.5s;
+    transition: color, 0.5s;
+}
+
+#toc a:hover {
+    margin-left: 15px;
+    color: rgba(0,0,0,1);
+}
+
 /*                                                                                                            CONTENT */
 
 h1 {
     text-transform: uppercase;
-    height: 60px;
+    min-height: 60px;
     line-height: 60px;
     text-align: center;
     /*background: linear-gradient(rgb(200,200,200), rgb(220,220,220));*/
@@ -181,7 +228,8 @@ h4:before {
     color: rgba(0,0,0,0.7);
     background: url("/images/lambda.png") no-repeat;
     background-size: contain;
-    padding-left: 20px;
+    padding-left: 30px;
+    font-size: 1.0em;
 }
 
 #last_messages {
@@ -246,17 +294,17 @@ h4:before {
     border: none;
 }
 
-.figure {
+figure {
     /*border: 1px solid black;*/
     text-align: center;
     margin-top: 10px;
 }
 
-.figure img {
+figure img {
     /*box-shadow: 0px 0px 5px 1px rgba(200,200,200,1);*/
 }
 
-.caption {
+figcaption {
     text-align: center;
     font-style: italic;
     font-weight: bold;

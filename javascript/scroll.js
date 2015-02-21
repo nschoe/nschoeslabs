@@ -58,3 +58,16 @@ function animateScroll (timestamp) {
 
     window.requestAnimationFrame (animateScroll);
 }
+
+document.getElementById("toc").addEventListener("mouseover", makeTOCTransparent);
+document.getElementById("toc").addEventListener("mouseout", makeTOCOpaque);
+
+function makeTOCTransparent (evt) {
+  // document.getElementById("toc").getElementsByTagName("ul")[0].style.color = "red";
+  document.getElementById("toc").getElementsByTagName("ul")[0].className = "tocHover";
+};
+
+function makeTOCOpaque (evt) {
+  // document.getElementById("toc").getElementsByTagName("ul")[0].style.color = "rgba(255,255,255,1.0)";
+  document.getElementById("toc").getElementsByTagName("ul")[0].className = "";
+}

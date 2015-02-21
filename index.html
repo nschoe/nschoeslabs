@@ -6,14 +6,16 @@ title: Welcome Home !
     <div id="last_articles">
         <h2>Last Articles</h2>
         $for(lastTwoArticles)$
-            <div class="recent_article">
-                <h3>$title$</h3>
-                <p class="post_description">
-                    $description$
-                    <br>
-                    <span class="date_article">$date$</span>
-                </p>
-            </div>
+            <a href="$url$">
+                <div class="recent_article">
+                    <h3>$title$</h3>
+                    <p class="post_description">
+                        $description$
+                        <br>
+                        <span class="date_article">$date$</span>
+                    </p>
+                </div>
+            </a>
         $endfor$
     </div>
 

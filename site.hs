@@ -1,7 +1,10 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
+
 import           Data.Monoid (mappend, (<>))
 import           Hakyll
+import Data.Char (toLower)
+import Text.Pandoc
 
 
 --------------------------------------------------------------------------------
@@ -23,16 +26,19 @@ main = hakyllWith config $ do
         route idRoute
         compile copyFileCompiler
 
+    match "fonts/*" $ do
+        route idRoute
+        compile copyFileCompiler
 
     match (fromList ["about.md", "haskell.md", "ai.md", "webrtc.md"]) $ do
         route   $ setExtension "html"
-        compile $ pandocCompiler
+        compile $ myPandocCompiler
             >>= loadAndApplyTemplate "templates/default.html" defaultContext
             >>= relativizeUrls
 
     match "articles/*" $ do
             route $ setExtension "html"
-            compile $ pandocCompiler
+            compile $ myPandocCompiler
                 >>= loadAndApplyTemplate "templates/article.html" articleCtx
                 >>= saveSnapshot "renderedArticles"
                 >>= loadAndApplyTemplate "templates/default.html" articleCtx
@@ -110,3 +116,30 @@ config = defaultConfiguration
     {
         deployCommand = "rsync -avz -e ssh ./_site/ nschoe@nschoe.com:public_html/"
     }
+
+--------------------------------------------------------------------------------
+{-
+    Many thanks to Alp Mestan (alpmestan.com) for this neat function.
+-}
+myPandocCompiler :: Compiler (Item String)
+myPandocCompiler = do
+    ident <- getUnderlying
+    myPandocCompiler' =<< getMetadataField ident "toc"
+
+myPandocCompiler' :: Maybe String -> Compiler (Item String)
+myPandocCompiler' withToc = pandocCompilerWith defaultHakyllReaderOptions $
+    case withToc of
+        Just x | map toLower x `elem` ["true", "yes"] -> writerWithToc
+               | otherwise                            -> writerOpts
+        Nothing                                       -> writerOpts
+
+    where writerOpts    = defaultHakyllWriterOptions
+                            { writerReferenceLinks = True
+                            , writerSectionDivs = True
+                            , writerHtml5 = True
+                            }
+          writerWithToc = writerOpts
+                            { writerTableOfContents = True
+                            , writerTemplate = "$if(toc)$<div id=\"toc\"><h3>Table of contents</h3>$toc$</div>$endif$\n$body$"
+                            , writerStandalone = True
+                            }

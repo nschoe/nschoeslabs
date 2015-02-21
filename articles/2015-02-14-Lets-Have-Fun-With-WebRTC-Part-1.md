@@ -1,6 +1,8 @@
 ---
 title: Let's Have Fun With WebRTC! - Part 1
 description: WebRTC is a new technology that allows peer-to-peer media communication. It is fast (it relies on UDP), it is secure (all payload is encrypted -mandatory), and the best, simplest APIs have been implemented in web browsers, so all of this is available right now, without the need of any external softwares or plugins! In this series of articles, we will build some cool applications together to demonstrate the power of WebRTC!
+toc: yes
+tags: webrtc,web
 ---
 
 ## Introduction
@@ -161,6 +163,21 @@ Another bonus point: this is compatible with Android devices, so your web app ca
 
 The code is available [here](https://github.com/nschoe/fun-with-WebRTC-part-1/tree/master/1_mirror).
 
+![](/images/warning.png "Attention Chrome Users")**Chome Users:**  
+If you are using Chrome or Chromium, you might want to read this. Chrome is quite _picky_ when it comes to webcam access, it seems to deny its access be default on non HTTP**S** hosts. So is it very likely the previous (and following) code will fail for you. Don't panic. Just look for the red-crossed camera icon on the right of your URL bar, as presented here:
+
+![Chromium red-crossed camera icon](/images/chrome_webcam_fail.png "Chromium denies webcam access by default.")
+
+Click on it (it should read something like "Always block camera access" or similar) and check "Ask permission for webcam" (or similar). **At that point, it will still not work**: you have to refresh teh page (`F5` / `CMD + R`).  
+Now there is one another behavior that I noticed with Chromium (& Chrome), that _might_ happen following the previous step: when you deny webcam access once, Chromium tends to "remember" it. So you will have pop-up saying the webcam access failed next time you try the application; **even though it presents you with the `Allow` and `Deny` buttons**.  
+What you have to do for this to work again is the following:
+
+- validate the pop-up telling you the webcam failed
+- click on `Allow` to allow access to your webcam, **at that point, nothing will happen**, which is "normal"
+- refresh the page, now you should be asked for the webcam again, click `Allow` and **now** the webcam _should_ be working.
+
+Don't hesitate to try that again if Chrome fails on these examples. I tested it: it works in both Firefox and Chrome.
+
 **Just for fun** and even if this deviates from the WebRTC topic, let me show you how to add a few lines of code to this basic application to let you grab the picture at the click of a button (or the stroke of a key) and manipulate it. That way you can have your custom "photo booth" application to grab pictures from your webcam, apply a couple of filters and save it on disk. Handy if you don't want to start a dedicated program for that (like Cheese on Linux).
 
 _You can safely pass this section if you want to focus on WebRTC, [jump here to pass.](#set-up-a-signalling-channel)_
@@ -319,7 +336,7 @@ All of this is no joke: it works. But this is dumb, as you might guess: your pee
 So we do need some kind of automation, a much clever solution that using email.
 
 What we need is a way to transmit text data and bind events from the Javascript, so that we can automate this. So there are several candidates: you can use HTTP with AJAX or long polling. What I like to use, though, is WebSockets. The WebSockets API is very well supported and easy to use from the browser, and you will see that the WebRTC API is **very** similar to the WebSockets' (it was designed to be almost transparent).  
-For the backend part, you can use a PHP implementation, or a C, or anything you want, really. For simplicity's sake and because I really love it, I will use Haskell.
+For the backend part, you can use a PHP implementation, or a C one, or anything you want, really. For simplicity's sake and because I really love it, I will use Haskell.
 
 #### Wait whut?! Aren't You Talking About a Central Server?
 Well... yes. I admit. But I did not lie to you: WebRTC **is** peer-to-peer, the actual call will be peer-to-peer. But you have to understand that some parameters need to be transmitted, and you need a support for that -a bit like you need to give someone your phone number face to face the first time before you can be called.  
@@ -376,7 +393,7 @@ It works as follows:
     - to show you that the signalling channel is indeed only used during signnaling and your peero-to-peer connection **is** peer-to-peer
     - (_lazy alert !_) it will prevent us from implementing a system to check if a user is currently in a call and thus cannot be called (though it would fairly easy).
 
-**/!\\** I wrote the signalling server code fairly quickly. The goal was to have something working, so we could focus on the WebRTC part. Don't judge me on that code :-)  
+![](/images/warning.png "Attention Chrome Users") I wrote the signalling server code fairly quickly. The goal was to have something working, so we could focus on the WebRTC part. Don't judge me on that code :-)  
 I am including the code here for the curious, but this is not the core of this post.
 
 First, the list of imports:
@@ -574,7 +591,9 @@ case c of
 
 All the signalling server does is _relay_ the data from peer A to peer B, that data being SDP parameters. All the other pieces of code around that are just establishing connection, and finding a way to map the peers. This is _all_.
 
-**/!\\ Notes:** in **every** sensible signalling server implementation, all communications should be **encrypted**. In our case, we should use `https` for presenting the web page, and use the `wss` WebSockets encrypted protocol rather than `ws` (this last 's' stands for "secure", in case you missed it). Again, here I did not bother using encryption, because this is simply a test server.
+![](/images/warning.png "Attention Chrome Users") **Notes:** in **every** sensible signalling server implementation, all communications should be **encrypted**.  
+In our case, we should use `https` for presenting the web page, and use the `wss` WebSockets encrypted protocol rather than `ws` (this last 's' stands for "secure", in case you wondered).  
+Again, here I did not bother using encryption, because this is simply a test server.
 
 ### Peer Discovery
 Alright, so back to "real" WebRTC stuff now. Let's take a look at what we have now:
@@ -912,7 +931,8 @@ function startConv() {
 ```
 
 What we need to do to _start a conversation_ is create a channel between the peers (the `RTCPeerConnection`), acquire media and transmit it.  
-**/!\\ Attention: WebRTC dirt here**  
+
+![](/images/warning.png "Attention Chrome Users") **WebRTC dirt here**  
 It turns out that for your WebRTC application to work, you have to add your media stream (with `pc.addStream()`) **BEFORE** setting your local description (and idem for the callee). I call this **dirty** because I have yet to find a _good_ explanation of why this is needed, and because I don't recall the documentation to ever specify that...
 
 Anyway, back to our code sample. the first few lines are just debugging stuff, you can omit them. It simply outputs on the console if we are _making_ a call or _answering_ one. As usual, it might be a good idea to display visual (or audio) feedback to the user, like a phone ringing or a picture of a phone shaking; universal signals that we are placing a call.  
@@ -982,7 +1002,7 @@ It is now the time to instance our `RTCPeerConnection` and make store it in the 
 Okay now that the `RTCPeerConnection` is created, _the very first thing we do now_ is add our stream (since WebRTC _silently_ requires so); this is done with `pc.addStream()`.  
 Then we define the callbacks for `pc.onaddstream()` and `pc.onicecandidate()` events. The former will be triggered when our peer will itself call `pc.addstream()` and the latter is fired whenever our ICE Agent will gather candidates.
 
-**/!\\ Attention:** if you're like me and usually write a few lines of code/ functions (with debugging `console.log()` calls), then try it to see what's happening (in your console), **do not stop here**. I tried it, and obviously spent time trying not to bang my head against the wall. I believe I said it earlier but nothing will happen before we called `pc.setLocalDescription()`! Now see how ironic this is? In order to get some results, you would be tempted to create your `RTCPeerConnection`, then register the callback and call `setLocalDescription()`? You _would_ have something on the console now, but it would eventually fail because _you need to add your stream beforehand_.
+![](/images/warning.png "Attention Chrome Users") If you're like me and usually write a few lines of code/ functions (with debugging `console.log()` calls), then try it to see what's happening (in your console), **do not stop here**. I tried it, and obviously spent time trying not to bang my head against the wall. I believe I said it earlier but nothing will happen before we called `pc.setLocalDescription()`! Now see how ironic this is? In order to get some results, you would be tempted to create your `RTCPeerConnection`, then register the callback and call `setLocalDescription()`? You _would_ have something on the console now, but it would eventually fail because _you need to add your stream beforehand_.
 
 Now comes the dependant part. We are the caller in this case, so what we need to do now, is create the offer, this is done with `pc.createOffer()`. Since the recent WebRTC 1.0 review, the API slightly changed. Most of the functions now take a success and an error callback (which are mandatory; well stricly speaking they are not _yet_, but calling these functions without the callbacks triggers the browser to display a warning in the console, telling you that soon, it would result in an error, thus breaking yor code. This is quite new actually, so you might be surprised if you have already read some WebRTC code example before and did not see callbacks). In addition to the success and error callbacks, some functions take an additional `MediaConstraints` object as the third parameters. Quite frankly, I don't really understand why, since the contraints are already available inside the `RTCPeerConnection`.  
 The function `createOffer()` follows that rule. Our error callback is simply a log on the console.  
