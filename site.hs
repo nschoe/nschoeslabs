@@ -5,7 +5,8 @@ import           Data.Monoid (mappend, (<>))
 import           Hakyll
 import Data.Char (toLower)
 import Text.Pandoc
-
+import Text.Pandoc.Options
+import qualified Data.Set as S
 
 --------------------------------------------------------------------------------
 main :: IO ()
@@ -133,9 +134,14 @@ myPandocCompiler' withToc = pandocCompilerWith defaultHakyllReaderOptions $
                | otherwise                            -> writerOpts
         Nothing                                       -> writerOpts
 
-    where writerOpts    = defaultHakyllWriterOptions
+    where mathExtensions = [Ext_tex_math_dollars, Ext_tex_math_double_backslash, Ext_latex_macros]
+          defaultExtensions = writerExtensions defaultHakyllWriterOptions
+          newExtensions = foldr S.insert defaultExtensions mathExtensions
+          writerOpts    = defaultHakyllWriterOptions
                             { writerReferenceLinks = True
                             , writerSectionDivs = True
+                            , writerExtensions = newExtensions
+                            , writerHTMLMathMethod = MathJax ""
                             , writerHtml5 = True
                             }
           writerWithToc = writerOpts
