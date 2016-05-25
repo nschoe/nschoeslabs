@@ -21,11 +21,13 @@ html,body,p,div,h1,h2,h3,h4,h5,h6,img,article,section {
     src: url('/fonts/oxygen.otf');
 }*/
 
+
 /*                                                                                                            GENERAL */
 
 html {
-    font-family: 'Oxygen', sans-serif;
-
+    /*font-family: 'Oxygen', sans-serif;*/
+    font-family: 'Lora', sans-serif;
+    font-size: 13pt;
 }
 
 body {
@@ -96,6 +98,7 @@ header {
     height: 60px;
     background: linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.7));
     border-bottom: 3px solid black;
+    font-size: 11pt;
 }
 
 header > a {

@@ -44,7 +44,7 @@ function computeScroll () {
 }
 
 function animateScroll (timestamp) {
-    if (timestamp - scrollTS >= 500) {
+    if (timestamp - scrollTS >= 100) {
         scrollTS = timestamp;
 
         var newScroll = computeScroll();
