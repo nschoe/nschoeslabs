@@ -17,7 +17,7 @@ Today I'll like us to work on some classic, general-purpose and well-known Artif
 
 You may know them, you may have used them, you might have heard of them, and very often, that'll be just that: _you have heard of them_. And I was the same: I _knew_ all of them, I knew the basic idea behind them (which is fine, for most things, it is important to have a basic understanding, it makes it all the more easier when you decide to learn it in a bit more thorough way) but I had never **played/worked with them**.  
 And this is what we are going to do here today!  
-Sounds coold, doesn't it?
+Sounds cool, doesn't it?
 
 For each of these algorithms, we will understand what the main idea about them is. Then we will try to pursue a little further by trying to pinpoint the specifics: enumerate the steps it is composed of, their order and their importance.  
 Because we understand better that way we will then code an actual implementation, in Haskell (as always, you know I love it, can't help it!), so that we'll be able to **actually** play with them, and boost our understanding.  
@@ -28,10 +28,10 @@ What happens is that based on dozens of articles, books and papers on A.I. that 
 I will be **delighted** to hear comments (good and bad) about my approach, my implementation or my explanations!
 
 ### Why The Hell Do I Do That?
-Well, as I have just mentionned, I wanted to give anybody the opportunity to _easily_ experiment with A.I. and in particular with these algorithms. You have to know that _there is nothing new here_ for the A.I. field. I haven't invented these algorithms: they are all well-known by any A.I. student. But this is it: _by the A.I. students_.  
+Well, as I have just mentioned, I wanted to give anybody the opportunity to _easily_ experiment with A.I. and in particular with these algorithms. You have to know that _there is nothing new here_ for the A.I. field. I haven't invented these algorithms: they are all well-known by any A.I. student. But this is it: _by the A.I. students_.  
 It is amazing what a little A.I. might do in almost any application, and I just want everybody to know that some low-level A.I. is achievable, not boring and accessible.
 
-I'd like for you to think about this series of articles as a go-to ressource for when you are decided to take on an A.I. project and you feel like getting an introduction or a quick refresher course.
+I'd like for you to think about this series of articles as a go-to resource for when you are decided to take on an A.I. project and you feel like getting an introduction or a quick refresher course.
 
 ### Where Doest That Come From?
 
@@ -68,7 +68,7 @@ Now that was just the idea, we will have plenty of time to cover that more thoro
 
 How will our algorithms, or agents actually _make decisions_? One of the ways is to use a _cost function_. Quickly said, a cost function gives a price, or a cost: an estimation of _how bad_ a chosen path is.  
 Okay that was not so clear after all. Let me say it again: a cost function will tell you how much it will cost you to go down the path you're currently examining. The goal is, obviously to minimize the overall cost. (Now, if you think it's weird to reason in terms of "how bad" your solution will be, you can make the cost function become an _evaluation function_ which will tell you how good your solution is; the goal would be to pick the highest. Actually make yourselv familiar with that as I will endlessly switch between cost functions and objective functions, so sometimes we will try to minimize a function, sometimes maximize it. But we are always talking about the same thing. Be ready for that).  
-To make an analogy (again and ever: analogies are the keys to understanding concepts), imagine we are building a GPS application, you want to go from town A to town B. There are several ways. You cost function could be the distance, if your goal is to find the shortest path. It might be the time, if your goal is to minimize the time you spend on the road. Or it might be a combinaison of both: `cost(dist,time) = a * dist + b * time`, adjusting the coefficients. And a great many things depend on finding the _good_ cost function.
+To make an analogy (again and ever: analogies are the keys to understanding concepts), imagine we are building a GPS application, you want to go from town A to town B. There are several ways. You cost function could be the distance, if your goal is to find the shortest path. It might be the time, if your goal is to minimize the time you spend on the road. Or it might be a combination of both: `cost(dist,time) = a * dist + b * time`, adjusting the coefficients. And a great many things depend on finding the _good_ cost function.
 
 Okay, boring part over, we-are-ready!
 
@@ -88,11 +88,11 @@ Okay my friends, welcome in the first part of this article!
 The Hill-climbing, or steepest-ascent algorithm is part of the _Informed Searching Algorithms_, which means they are algorithms that make use of _additional information_ compared to the raw problem definition.  
 Now what does that mean exactly?
 
-Before I answer this, let me say something: 
+Before I answer this, let me say something:
 
 > When you are wondering what something means or implies in Artificial Intelligence (for your Agent); just ask what it would mean **for you**.
 
-Even though Artificial Intelligence is not necessarily trying to mimick the human mind and the human intelligence, it still provides a strong reference point.  
+Even though Artificial Intelligence is not necessarily trying to mimic the human mind and the human intelligence, it still provides a strong reference point.  
 Okay so, what would "additional information" mean for us compared to the problem definition? Otherwise, what is likely to _help_ you with respect to the problem?
 
 Imagine your problem is the one we talked about before: going from town A to B, minimizing, say the time. Bham, that's the definition of the problem. Good luck with that.  
@@ -295,7 +295,7 @@ createBoard dim xs = Board dim validQueens
 I think this is pretty self-explanatory: from the list of coordinates the user gives us, we filter out those who are out-of-bound. Simple.  
 You will note that we sort the list, the order relation for pairs is to sort them first according their first coordinate, then their second. This is why I decided that the first coordinate would be the row number and that our origin point would be the at top left.
 
-As with every articles I will write on this website, it is about _getting a feeling_ about things, _understand_ how things work and assemble together. And as my mathematics Prépa School teacher always said: 
+As with every articles I will write on this website, it is about _getting a feeling_ about things, _understand_ how things work and assemble together. And as my mathematics Prépa School teacher always said:
 
 > Always draw things when you can
 
@@ -359,7 +359,7 @@ This is why we insert spaces between each character (with `intersperse ' '`) so 
 * * * *
 ```
 
-We have enough to test this in our console, just to check that everything displays nicely: 
+We have enough to test this in our console, just to check that everything displays nicely:
 
 ```haskell
 main :: IO ()
@@ -576,7 +576,7 @@ main = do
 ```
 
 (Bear with me for the dangerous binding, this is just to test our function, we will discard this code right after)
-And we get: 
+And we get:
 
 ```zsh
 New board generated
@@ -763,7 +763,7 @@ isBoardValid (Board n xs) =
           checkRowAndCols' _ _ []           = True
           checkRowAndCols' xs ys ((x,y):cs) | x `elem` xs || y `elem` ys = False
                                             | otherwise                  = checkRowAndCols' (x:xs) (y:ys) cs
-          
+
           rotate45 (x, y) =
             let x' = x - y
                 y' = x + y
@@ -774,7 +774,7 @@ The new part consists of applying `rotate45` to all pairs of coordinates and the
 And this is much better, because now we traverse the list 3 times: once for checking horiztonal and vertical alignment, once for changing the coordinates and once again to check for horizontal and vertical alignment in the new base. This is $O(3\times N)=O(N)$.  
 Of course, this function has been written to follow our logic, but surely we can manage to traverse the list only once by using 4 lists: we check for alignment in the first base, rotate the coordinates and check for alignment in the second base, just in one step. But this is hardly as readable. (Of course, for serious use, you should use it).
 
-Time for a check: 
+Time for a check:
 
 ```zsh
 * Q * * * * * *
@@ -801,7 +801,7 @@ The idea is the following:
     + if **both** `x` and `y` coordinates have already been found, it means our current queen is **both** attacking a queen vertically **and** horizontally (the bold should tell you that I first missed it and wondered why I had not the correct results!), so we increase the number of attacking pairs **by two**
     + otherwise, it means the queen is not attacking any other queen.
 
-Let's code this: 
+Let's code this:
 
 ```haskell
 countAttackingPairs :: Board -> Int
@@ -1048,7 +1048,7 @@ To compare it with others, it would be good to be able to build some sort of sta
 
 How are we going to implement that?  
 We will simply create a function that takes our algorithm as a parameter, and the number of tests to run.  
-Firstly, we add a line in our menu: 
+Firstly, we add a line in our menu:
 
 ```haskell
         "stats_hill"    -> runStats hillClimbing board
@@ -1380,7 +1380,7 @@ Let me rephrase this just to mark the importance of what I've just said: what we
 
 "Okay hot-shot, so I've just to find **one solution** and make my algorithm always return that solution, it will be $O(1)$". Well... yes. You could do that. That answers out goal "find a solution", but that would be pretty pointless, right? So we _did_ try to have a nice algorithm that can find several solutions when run several times.  
 Anyway, I just wanted to highlight the fact that random-restart doesn't make sense in all situations, so don't think about it as a go-for-it solution every time.  
-In our situation, though, it is pretty efficient: 
+In our situation, though, it is pretty efficient:
 
 ```zsh
 Launching stats on 10000 computations.
@@ -1466,7 +1466,7 @@ Now we got something real: $94\%$ success rate is pretty awesome for a basic alg
 And at last we saw the benefit of sometimes restarting from another point in the space of possible states, which can be useful.
 
 As we saw, though, our algorithm performs badly when it deals with a board larger than, say, $15\times15$. It doesn't scale well, takes too much time and too much ressource.  
-We will want to correct that in our next algorithms. 
+We will want to correct that in our next algorithms.
 
 ### A Word On Random
 
