@@ -8,7 +8,7 @@ tags: docker,container,continuous-integration,continuous-delivery
 ## Introduction
 [Docker](https://www.docker.com/) is one of those _things_ that, one day, started popping in forums, in IRC channels discussions and on [Hacker News](https://news.ycombinator.com/) and making _the buzz_, but I never took time to really know what that was _really_ about.  
 Of course I don't live in a cave: I had heard of it, but whenever I read something that talked about Docker, ideas like "software containers", "sandboxes" and "virtual machines" were lighting, but that was about it.  
-And then one day I wanted to learn Docker, and I immediately faced a problem: everybody "knew" about Docker, everybody talked about Docker, but nobody was actually _explaining_ Docker anymore. It was as if it was so obvious, that the only topics were about Docker implementations, people raging that Docker did not bring anything knew, that containers had been around for decades already, etc.  
+And then one day I wanted to learn Docker, and I immediately faced a problem: everybody "knew" about Docker, everybody talked about Docker, but nobody was actually _explaining_ Docker anymore. It was as if it was so obvious, that the only topics were about Docker implementations, people raging that Docker did not bring anything new, that containers had been around for decades already, etc.  
 Furthermore, the Docker landing page itself was not much more verbose:
 
 > An open platform for distributed applications for developers and sysadmins.
