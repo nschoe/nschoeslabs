@@ -425,3 +425,5 @@ On the contrary, you don't need to be an expert in every of the details we saw: 
 
 I hope I was clear enough and that I shed some lights on some concepts that were obscure, if you still have gray areas, feel free to [email me](mailto:ns.schoe@gmail.com) or poke me (**nschoe**) on IRC (`#docker`).  
 In the next article, I will relieve some of the frustration and we will begin playing with "real" `docker` commands. In the meantime, you don't need to do anything specific, I'll begin the next article with the installation instructions.
+
+**Part II is available to read [here](http://nschoe.com/articles/2016-07-03-Docker-Taming-the-Beast-Part-2.html)**!
