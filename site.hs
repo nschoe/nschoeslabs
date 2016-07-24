@@ -107,7 +107,7 @@ nschoeslabsRSSConfig = FeedConfiguration
     , feedDescription = "Haskell, Artificial Intelligence and WebRTC."
     , feedAuthorName  = "Nicolas SCHOEMAEKER"
     , feedAuthorEmail = "ns.schoe@gmail.com"
-    , feedRoot        = "http://www.nschoeslabs.com"
+    , feedRoot        = "http://www.nschoe.com"
     }
 
 --------------------------------------------------------------------------------
