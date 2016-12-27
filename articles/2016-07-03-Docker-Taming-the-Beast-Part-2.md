@@ -764,7 +764,7 @@ By the way, if you want to "unstuck" your stuck container, try `CTRL + A; P` (th
 
 So last but not least---I promise this will work after that---we have to allocate a (pseudo-)TTY. And this is with the `-t` option. In fact this is _so common_ that you will always group `-i` and `-t` together with `-it` or `-ti`.
 
-And **now** we can do some serious stuff: `docker run -it run ubuntu bash`.
+And **now** we can do some serious stuff: `docker run -it ubuntu bash`.
 
 Ho yeah! It works now: we have a shell inside our container!
 
