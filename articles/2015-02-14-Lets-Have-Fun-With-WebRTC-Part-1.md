@@ -1,5 +1,5 @@
 ---
-title: Let's Have Fun With WebRTC! - Part 1
+title: "Let's Have Fun With WebRTC! - Part 1"
 description: WebRTC is a new technology that allows peer-to-peer media communication. It is fast (it relies on UDP), it is secure (all payload is encrypted -mandatory), and the best, simplest APIs have been implemented in web browsers, so all of this is available right now, without the need of any external softwares or plugins! In this series of articles, we will build some cool applications together to demonstrate the power of WebRTC!
 toc: yes
 tags: webrtc,web
@@ -54,7 +54,7 @@ This is basically the steps we will follow. We will learn together the underlyin
 
 ### Acquire Audio and Video Media Streams
 Remember our workflow from earlier? The very first thing we need to do to transmit our pretty face & voice is to acquire the streams. Sounds easy, but until recently, you had to rely on either Adobe Flash, Java (or Microsoft Silverlight?).  
-A new, neat Javascript API, that integrates well with HTML5 and WebRTC helps us now : 
+A new, neat Javascript API, that integrates well with HTML5 and WebRTC helps us now :
 [The MediaStream and MediaCapture API](http://www.w3.org/TR/mediacapture-streams/).
 
 Let's describe this API briefly first, so that we know what we are dealing with.
@@ -112,7 +112,7 @@ navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia 
 
 /*
 Build our constraints, here we keep it simple: yes to audio and video.
-But we might be more specific: 
+But we might be more specific:
 var constraints = {
     mandatory: {
         height: {min: 720}
@@ -495,7 +495,7 @@ getConnection nick (x:xs) | nick == fst x = Just (snd x)
 
 -- Add a user if he is not already connected
 addUser :: Client -> ServerState -> Either ServerState ServerState
-addUser client state | isUserConnected client state = Left state 
+addUser client state | isUserConnected client state = Left state
                      | otherwise = Right $ client : state
 
 -- Remove a user from the server
@@ -512,7 +512,7 @@ main = do
 
 The `main` function simply creates a new, empty state (empty list, really), that it wraps in an `MVar`. This is so that there is not concurrent modifications. It then spawns the WebSockets server.
 
-Now, the `application` function, which acts on incomming connections: 
+Now, the `application` function, which acts on incomming connections:
 
 ``` haskell
 -- Application that will do the signalling
@@ -637,7 +637,7 @@ Let's describe a few of its aspects. **Attention:** this part is important as he
 
 It is instanciated with: `var pc = new RTCPeerConnection();`. You can pass a parameter containing the addresses of your STUN and TURN servers (scroll down a few lines for a quick word about TURN servers).  
 
-Some properties of the `RTCPeerConnection` object that are useful: 
+Some properties of the `RTCPeerConnection` object that are useful:
 
 - `iceConnectionState`: tells you how you connection is, at the moment. Whenever it changes, it is supposed to emit a `iceconnectionstatechange` event. The return value is a `RTCIceConnectionState` and can be:
     + `new`: just created, waiting for candidates to become available
@@ -896,7 +896,7 @@ if (dat.userlist) {
 We use [JSON](https://en.wikipedia.org/wiki/JSON) for all data exchange, so the first thing we do when we receive a message is try to parse it (this is done in the `try`/`catch` block).  
 First test in the `onmessage` handler is if we received the userlist from the server. In this user list, there is quite simply the list of all nicknames currently connected (including ours, hence the condition to exclude ourselves from the list), then we build a HTML list (`<ul>`) in which we add the contacts with a button. On each contact button, the `navigator.callUser()` event is bound.
 
-So the logical next step now is to see what this `callUser()` function does: 
+So the logical next step now is to see what this `callUser()` function does:
 
 ```javascript
 // Initiate a call to a user
@@ -1013,7 +1013,7 @@ If you want to inspect it, you can call `console.log (JSON.stringify (offerSDP))
 It is time to _actually_ start the whole WebRTC procedure by calling `setLocalDescription()`. You need to give him a `RTCSessionDescription` which you can build inline from a the SDP offer we have just created. This function, too, comes with a success and error callback (which we only use here to notify the user on the console.)  
 If you read some WebRTC examples elsewhere, you might see some people _sending the offer_ in the success callback of `setLocalDescription()`. It is called **trickle ICE**. Let me explain quickly the difference:
 
-What we are going to do in this application might be summarized like this: 
+What we are going to do in this application might be summarized like this:
 
 1. create the offer and set it as the local description (it will then trigger the ICE Agent which will start gathering candidates)
 2. monitor this ICE Agent; when it is done gathering candidates, we will send our peer our local description which will contain everything in one batch: the codecs we support, the media we are ready to transmit and receive as well as all our candidates (remember a candidate is bound to our network interface, and contains protocol (UDP or TCP), IP address, port number, etc)

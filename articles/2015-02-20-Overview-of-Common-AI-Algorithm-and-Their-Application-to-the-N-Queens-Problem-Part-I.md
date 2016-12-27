@@ -1,5 +1,5 @@
 ---
-title: Overview of Common A.I. Algorithms and Their Application To the N-Queens Problem - Part I
+title: "Overview of Common A.I. Algorithms and Their Application To the N-Queens Problem - Part I"
 description: In this article, we will see four general-purpose A.I. algorithms (W, X, Y and Z). We will understand how they work in the background, what they are usually used for and how we can implement them to solve the problem of the N-Queens.
 toc: yes
 tags: ai,algorithms,haskell

@@ -1,5 +1,5 @@
 ---
-title: Docker: Taming the Beast - Part III: Building Images
+title: "Docker: Taming the Beast - Part III: Building Images"
 description: In part III, we will explore as much as we can of the BUILD time, that is, how to write correct Dockerfiles, how to build images, what happens when images are built, the good practices, the traps to avoid, etc.
 toc: yes
 tags: docker,container,continuous-integration,continuous-delivery

@@ -1,5 +1,5 @@
 ---
-title: Docker: Taming the Beast - Part I
+title: "Docker: Taming the Beast - Part I"
 description: Docker is the new hype these days. Claiming to replace virtual machines, it promises faster delivery times, better software separations, reproducible development -and production- environments. This first post aims at presenting Docker, the concepts of containers, the differences between Docker and virtual machines, and lay the basics for the following posts.
 toc: yes
 tags: docker,container,continuous-integration,continuous-delivery

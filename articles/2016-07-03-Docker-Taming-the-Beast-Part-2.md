@@ -1,5 +1,5 @@
 ---
-title: Docker: Taming the Beast - Part II
+title: "Docker: Taming the Beast - Part II"
 description: In this second article, it's about time we began playing with docker commands. We will begin by seeing how to install docker, and then we will cover the fundamentals. This is very important because everything else will rely on the good understanding of Docker fundamentals / terminology.
 toc: yes
 tags: docker,container,continuous-integration,continuous-delivery
