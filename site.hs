@@ -116,7 +116,9 @@ config :: Configuration
 config = defaultConfiguration
     {
         -- deployCommand = "rsync -avz -e ssh ./_site/ nschoe@nschoe.com:public_html/"
-        deployCommand = "rsync -avz -e ssh ./_site/ nschoe@178.32.220.77:/www/"
+        -- deployCommand = "rsync -avz -e ssh ./_site/ nschoe@178.32.220.77:/www/"
+        deployCommand = "rsync -avz -e ssh ./_site/ nschoe@nschoe.com:/www/"
+      , previewHost = "0.0.0.0"
     }
 
 --------------------------------------------------------------------------------
