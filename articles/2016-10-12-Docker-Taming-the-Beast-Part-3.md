@@ -6,7 +6,7 @@ tags: docker,container,continuous-integration,continuous-delivery
 ---
 
 ## Introduction
-Hi and welcome in Part III! In [Part II](http://nschoe.com/articles/2016-07-03-Docker-Taming-the-Beast-Part-2.html), we have been learning about the fundamental concepts of Docker, the difference between images and containers (I really hope you have not forgotten about this, this is _fundamental_).  
+Hi and welcome in Part III! In [Part II](/articles/2016-07-03-Docker-Taming-the-Beast-Part-2.html), we have been learning about the fundamental concepts of Docker, the difference between images and containers (I really hope you have not forgotten about this, this is _fundamental_).  
 We have also seen basic commands and concepts about images, containers, we have briefly talked about volumes, etc.  
 If you found that it lacked examples, you will be happy with this article I think. In the few examples that we saw, we have always _used_ images, that we have pulled from the Docker Hub---I think we have only used `ubuntu` and `nginx`.
 

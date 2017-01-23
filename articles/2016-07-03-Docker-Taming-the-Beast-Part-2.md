@@ -6,7 +6,7 @@ tags: docker,container,continuous-integration,continuous-delivery
 ---
 
 ## Introduction
-Welcome to the **second** part of the _Docker: Taming the Beast_ series. In [Part I](http://nschoe.com/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html) we have talked about the core principles behind docker: what is going under the hood.  
+Welcome to the **second** part of the _Docker: Taming the Beast_ series. In [Part I](/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html) we have talked about the core principles behind docker: what is going under the hood.  
 This sharpened our intuition, and now we are ready to go in: let's play with Docker!  
 In this post, we will briefly see how to install Docker, and then we will focus on what I call the _Docker Fundamentals_. These will be the Docker concepts (and commands!) that you will use on a daily basis.
 
@@ -16,7 +16,7 @@ Now, let's get ready and see how to install Docker!
 
 ## Installing Docker
 
-As you should recall from [Part I](http://nschoe.com/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html), Docker runs on the Linux kernel, so it _needs_ the Linux kernel. Hence, it should be installed... in Linux.  
+As you should recall from [Part I](/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html), Docker runs on the Linux kernel, so it _needs_ the Linux kernel. Hence, it should be installed... in Linux.  
 Now what do you do when you are running Windows or Mac OS X? Well, this is simple: you create a Virtual Machine running Linux and you install Docker in it!  
 Simple, isn't it?!  
 No. Well yes, but... no. _Basically_ this is what the Windows and Mac OS X installers do when you install Docker on them. Only the Docker guys have automated the process (so you don't need to manually create the VM, and install Linux and install Docker and launch it.) Additionally, they take care of a lot of other stuff, which deal with network, sharing data, etc. These concepts are covered below.
@@ -107,7 +107,7 @@ Let's download it first: `docker pull ubuntu`.
 Hey hey hey! This was our first docker command! This is great. If this was not obvious, `docker pull` is used to fetch ("pull") an image from...  from where? By default, when you don't specify anything---like we just did---it pulls from the _Docker Hub_. This is a big repository hosted by Docker where dozens of people can push their newly-built images. You will be able to do it too, after reading the articles.
 
 #### A small, But Crucial Parenthese
-Notice something interesting in the output of your terminal: there are some talk about "pulling layers". This should ring a bell: from [Part I](http://nschoe.com/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html) we talked a bit about layers.  
+Notice something interesting in the output of your terminal: there are some talk about "pulling layers". This should ring a bell: from [Part I](/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html) we talked a bit about layers.  
 Well, the guys at Docker are very smart and they did not design images as a big blobs. Instead an image is comprised of stacked layers.
 
 "What's the big deal?" you might be wondering. Well I should have said: "an image is comprised of **reusable**, stacked layers". This is much more interesting indeed: it means that layers in images are _shared_ and _reused_ when possible.
@@ -290,7 +290,7 @@ This is what I'd like to do, and not a very sparse, incomplete little paragraph.
 
 #### The Problem
 OK, here we go, what's the problem?  
-Let's remember [part I](http://nschoe.com/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html) where I was talking about layers, remember?
+Let's remember [part I](/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html) where I was talking about layers, remember?
 
 I'll recap the idea phrasing it in another way, which should help clarify any remaining doubts. This is highly related to [Images vs. Containers](#images-vs.containers).
 
@@ -304,7 +304,7 @@ Alright, but we never really talked about what a **container** actually was. How
 
 Here is how it happens: when you have an image, which is composed of several layers (three in the example below), they are stacked like this:
 
-```
+```bash
 ----------------------------------------
 |              LAYERS #3               |
 ----------------------------------------
@@ -319,7 +319,7 @@ All these layers are **read-only** because together they make an immutable image
 
 Now witness the magic behind creating a container out of this image:
 
-```
+```Bash
 ----------------------------------------
 |              RW LAYER                |
 ----------------------------------------
@@ -524,15 +524,15 @@ So what can we do with images on our system, what are some useful docker command
 
 Well, first, it's good to know what images we have on our host, we can list them with:
 
-```
+```Bash
 docker images
 ```
 
 (_note that this is_ `images`_, plural; docker lacks some uniformity here, remember it was_ `docker volume`_, singular)_  
 The output is pretty straightforward, on my machine it currently gives:
 
-```
-$ docker images
+```Bash
+$> docker images
 
 REPOSITORY              TAG                 IMAGE ID            CREATED             SIZE
 solita/ubuntu-systemd   latest              58676da6fce1        2 weeks ago         122 MB
@@ -601,8 +601,8 @@ All of this to say that you **don't** have to delete your old image in order to 
 
 What does it mean for an image to lose its name? It means that:
 
-```
-$ docker images
+```Bash
+$> docker images
 
 <none>                  <none>              ed0206fc5a9c        11 days ago         353.5 MB
 <none>                  <none>              4e5c2e3d6118        11 days ago         122 MB
@@ -648,7 +648,7 @@ Note that it doesn't necessary mean that you should delete it: it might just be 
 
 What you want, most or the time, is delete these dangling images because you don't need them anymore and they pollute your system. The command to delete an image is:
 
-```
+```Bash
 docker rmi <image>
 ```
 
@@ -695,16 +695,16 @@ For the time being, let's use the second parameters only on images without a def
 
 So let's say we want to run a process based on the ubuntu image, the command would start with `docker run ubuntu` and since the ubuntu image doesn't define a process by itself, we have to give it a command. Let's do that, let's start `bash` in it, so we can have a shell:
 
-```
-$ docker run ubuntu bash
+```Bash
+$> docker run ubuntu bash
 ```
 
 TADAAaaa...argh! What just happened here?
 
 We don't have a shell, and try running `docker ps`: our container is not listed here, which means it is not running. We can check this with: `docker ps -a`:
 
-```
-$ docker ps -a
+```Bash
+$> docker ps -a
 
 CONTAINER ID        IMAGE                   COMMAND             CREATED             STATUS                        PORTS               NAMES
 78b952473c3f        ubuntug                   "bash"              12 seconds ago      Exited (0) 11 seconds ago                         big_panini
@@ -733,8 +733,8 @@ Here we see the option: ` -i, --interactive               Keep STDIN open even i
 
 So here we go:
 
-```
-$ docker run -i ubuntu bash
+```Bash
+$> docker run -i ubuntu bash
 ```
 
 And it fails again... Sorry.  
@@ -742,8 +742,8 @@ But this time, it fails differently, right? Different means new information and 
 
 But the good news is that if you open another terminal **don't kill the one which seems stuck** and run `docker ps` you should have something like:
 
-```
-$ docker ps
+```Bash
+$> docker ps
 
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
 1e68fd3f988b        ubuntu               "bash"              3 minutes ago       Up 3 minutes                tiny_engelbart
@@ -770,8 +770,8 @@ Ho yeah! It works now: we have a shell inside our container!
 
 We can check it as usual:
 
-```
-$ docker ps
+```Bash
+$> docker ps
 
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
 d493691e64bc        ubuntu               "bash"              13 seconds ago      Up 11 seconds             insane_carson
@@ -806,7 +806,7 @@ It's time to learn how to remove containers, well this is easy: `docker rm <cont
 Though it is fairly easy as we've just seen, a couple of things of importance:
 
 - you cannot remove a running container, if you try this, docker will complain with  
-```
+```Bash
 Failed to remove container (<container-name>): Error response from daemon: Conflict, You cannot remove a running container. Stop the container before attempting removal or use -f
 ```
 As it is explained by the error message, you should stop the container before, with `docker stop <container-name>`. In the case where you want to be messy, or you need to be fast, or you don't care if some baby dear die, you can use the `-f` option to _force_ the removal---in which case docker will issue a `SIGKILL` to terminate your running process quick and dirty.  
@@ -862,19 +862,19 @@ It's a nice feature because it allows you to see if you have images growing out.
 
 Let's take an example, first we create a container from a base image, let's use `nginx` to change.
 
-```
-$ docker run -it --name size-test nginx bash
+```Bash
+$> docker run -it --name size-test nginx bash
 ```
 
 Now you should have a prompt like that:
 
-```
+```Bash
 root@ac71e120b023:/#
 ```
 
 you're inside the container. Let's exit it with `CTRL + D`. Now we want to display it, with its size. Since this is the last created, we will use this opportunity to use the `-l` flag that we just learned about:
 
-```
+```Bash
 # docker ps -ls
 
 CONTAINER ID        IMAGE               COMMAND             CREATED              STATUS                      PORTS               NAMES               SIZE
@@ -888,7 +888,7 @@ Now for its size: it's `0B (virtual 182.7 MB)`. What that means is that the cont
 
 We can quickly check that that we are saying is correct:
 
-```
+```Bash
 # docker images
 
 REPOSITORY              TAG                 IMAGE ID            CREATED             SIZE
@@ -901,8 +901,8 @@ Okay so we have a container, that is, for now, a _perfect_ copy of the image. So
 
 Let's add some "data" in that container. First, let's start it, since we want to have a shell inside, we'll use the `-a`and the `-i` options:
 
-```
-$ docker start -ai size-test
+```Bash
+$> docker start -ai size-test
 
 root@ac71e120b023:/#
 ```
@@ -911,7 +911,7 @@ So we used this opportunity to make use of what we previously saw: we just start
 
 A quick `ls` inside shows that we are at the root of the file system---the prompt indicated this, but now we can see for ourselves how the filesystem perfectly mimics the filesystem in an actual Linux installation.
 
-```
+```Bash
 root@ac71e120b023:/# ls
 
 bin   dev  home  lib64	mnt  proc  run	 srv  tmp  var
@@ -920,7 +920,7 @@ boot  etc  lib	 media	opt  root  sbin  sys  usr
 
 Let's create a file: `touch testfile.txt`. It creates an empty file. Let's exit `CTRL + D` and `docker ps -ls` again:
 
-```
+```Bash
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS                     PORTS               NAMES               SIZE
 ac71e120b023        nginx               "bash"              16 minutes ago      Exited (0) 3 seconds ago                       size-test           25 B (virtual 182.7 MB)
 ```
@@ -955,7 +955,7 @@ For simple uses, `<template>` is generally the name of the section you want to d
 
 For instance, if you run `docker inspect <container-name>` and you scroll back to the top, there should be a section called "State". You can filter and display only this section with `--format "{{.State}}"`. Try it: `docker inspect --format "{{.State}}" <container-name>` you will get something like:
 
-```
+```Bash
 {running true false false false false 12216 0  2016-06-27T17:07:19.517535765Z 0001-01-01T00:00:00Z}
 ```
 
@@ -1076,3 +1076,5 @@ The first two articles were---I think---the most theoretical. But it was necessa
 I hope I made the docker concepts clear, this was the goal of this article. From now one, the articles will be shorter---at least I think!---and _definitely_ more applied. I believe I have covered the majority of the docker concepts that can be applied to build complex setups. It's important that you keep everything we saw in mind, before now, in the following articles, we will apply all of these concepts.
 
 As usual I will try to give as many examples as possible to give you _insights_ and material to go on. I'm not yet settled on the next article, but there's a high probability that we will cover the process of building images and writing Dockerfiles. If you have a personal suggestion, don't hesitate to [shoot me an email](mailto:ns.schoe@gmail.com) and I'll see what I can do!
+
+**Part III is available to read [here](/articles/2016-10-12-Docker-Taming-the-Beast-Part-3.html)**!

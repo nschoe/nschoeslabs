@@ -170,7 +170,7 @@ Now that you are in your shell, run `touch test` to create a file named `test`. 
 Now run another terminal, we will try to see what's happening. As you probably already know, `ps` is what we can use to see the running processed. We will format a bit its output so that it is more readable. Run `ps -Ao ppid,pid,user,fname`. This launches `ps` to print a snapshot of the current running processed, and format the output, to display, in the order: the "parent PID", the PID, the user who executed the process and then the process name.  
 It should return a pretty long list, but toward the end, you should see something like this:
 
-```
+```Bash
 ...
 1067  7379 nschoe   zsh
 7379  8308 nschoe   tail
@@ -184,7 +184,7 @@ Now, launch this command: `tail -f test &`. The `&` sign that we appended means 
 
 Let's check that: `ps -Ao ppid,pid,user,fname`:
 
-```
+```Bash
 ...
 1067 12242 nschoe   zsh
 12242 13267 nschoe   tail
@@ -193,13 +193,13 @@ Let's check that: `ps -Ao ppid,pid,user,fname`:
 
 Now from that terminal, hit `CTRL + D`. It is possible that it answers with somehting along the line of
 
-```
+```Bash
 zsh: you have running jobs
 ```
 
 In which case, hit `CTRL + D` again. It should quit the terminal. Now that it is exited, let's run our `ps` command again (in a new terminal): `ps -Ao ppid,pid,user,fname`:
 
-```
+```Bash
 ...
 2189 15131 nschoe   ps
 ```
@@ -216,7 +216,7 @@ But _what if_ the parent never gets a chance to reap the child process? Well, we
 
 Let's check: `ps -Ao ppid,pid,user,fname`:
 
-```
+```Bash
 ...
 1067 16127 nschoe   zsh
 16127 16950 nschoe   tail
@@ -229,7 +229,7 @@ Now hit `CTRL + D`. Your terminal will most likely complain with something like 
 
 Now, let's see what happened to `tail`: `ps -Ao ppid,pid,user,fname`:
 
-```
+```Bash
 ...
 1 16950 nschoe   tail
 2189 17003 nschoe   ps
@@ -239,7 +239,7 @@ First, we see that `zsh` doesn't appear anymore, which is normal, because we kil
 
 This is another key concept of how Linux processes work: there really is _one process to control them all_. In Linux, there always is a top-most, parent-most process, called "the init process". It used to really be called "init", but it's very likely yours is called "systemd" now. You can see it with `ps -o ppid,pid,user,fname -p 1` (be sure to remove the `A`). It should return something like:
 
-```
+```Bash
 0     1 root     systemd
 ```
 
@@ -266,7 +266,7 @@ Well, all of this is possible, because all of these processes run in the _same n
 
 A typical namespace, like you have right now on your computer looks like this:
 
-```
+```Bash
 1 init
     |
     |-- 6728 zsh
@@ -291,7 +291,7 @@ Let's say we want to containerize `nginx`, a web server. Nginx is started from a
 
 But of course, we actually have only one machine (the host) and one operating system (our Linux distribution), because **we are _not_ running a virtual machine**, so whatever program we launch (that includes `bash` and `nginx`), they will be child processes of the "real" PID `1` init process, the one running on our system, _i.e._ `systemd`. Here is how the processes tree will look like:
 
-```
+```Bash
 1 init
     |
     |-- 6728 zsh
@@ -371,7 +371,7 @@ All of these are handled by the filesystem. If you're running a classic Linux in
 Let's get back to our topic. A _union filesystem_ is not a filesystem in the same sense that the ones I cited previously are. It rather relies on one of those, and then implement union mounts. Union mounts are conceptually simple yet very useful: it takes two or more directories and present a _unified_ view of them at a specified mount point.  
 Let's take a simple example, suppose we have two directories `dir1/` and `dir2/`, each containing files, as such:
 
-```
+```Bash
 dir1/           dir2/
 |               |
 |-- file1.txt   |-- file4.mp3
@@ -382,7 +382,7 @@ dir1/           dir2/
 
 Well, a union mount of `dir1/` and `dir2/` at mount point `/path/to/mnt/` would give:
 
-```
+```Bash
 /path/to/mnt/
 |
 |-- file1.txt
@@ -426,4 +426,4 @@ On the contrary, you don't need to be an expert in every of the details we saw: 
 I hope I was clear enough and that I shed some lights on some concepts that were obscure, if you still have gray areas, feel free to [email me](mailto:ns.schoe@gmail.com) or poke me (**nschoe**) on IRC (`#docker`).  
 In the next article, I will relieve some of the frustration and we will begin playing with "real" `docker` commands. In the meantime, you don't need to do anything specific, I'll begin the next article with the installation instructions.
 
-**Part II is available to read [here](http://nschoe.com/articles/2016-07-03-Docker-Taming-the-Beast-Part-2.html)**!
+**Part II is available to read [here](/articles/2016-07-03-Docker-Taming-the-Beast-Part-2.html)**!
