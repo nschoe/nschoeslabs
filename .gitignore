@@ -2,3 +2,6 @@ shell.nix
 dist/
 _site/
 _cache/
+watch.sh
+clean.sh
+next_article_idea
