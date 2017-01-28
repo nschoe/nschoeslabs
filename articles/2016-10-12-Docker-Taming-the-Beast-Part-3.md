@@ -2178,3 +2178,5 @@ Unless I forgot something, you should have everything you need for quite some ti
 Please make any remark concerning this article, all I want is for it to be extremely clear and give you everything you need. If you feel that I have forgotten something or if a part is unclear, do no hesitate to tell me, I'll do whatever I can to make it less confuse.
 
 I hope you liked the article, the next one will be about correctly handling data in Docker containers with Docker Named Volumes. This will be another _very_ important part and I hope you'll like it too!
+
+**Part IV is available to read [here](/articles/2017-01-28-Docker-Taming-the-Beast-Part-4.html)**!
