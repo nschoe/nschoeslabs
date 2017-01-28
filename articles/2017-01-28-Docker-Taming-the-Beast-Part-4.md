@@ -11,7 +11,7 @@ While the beast is not tamed yet, I reckon we have done a pretty good job at it 
 
 I'm glad to see you here, in Part IV, I hope you have read and liked the first three. In case you haven't, I suggest you read the articles in order, it will be more convenient for you as each articles builds on the base laid out by the previous one.
 
-[Here](/articles/2016-10-12-Docker-Taming-the-Beast-Part-3.md) is Part III if you missed it, and [here](/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.md) is the very first part if you're new here.  
+[Here](/articles/2016-10-12-Docker-Taming-the-Beast-Part-3.html) is Part III if you missed it, and [here](/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html) is the very first part if you're new here.  
 Enjoy the read!
 
 ### What we Have so Far
