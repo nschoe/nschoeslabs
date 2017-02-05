@@ -351,7 +351,7 @@ Anyway, let's go back to making sure the RW layer thing was real and not a consp
 
 Let's now create a 15MB file in `/tmp`. Since we did not mount a Named Volume or a host's directory at `/tmp`, this file we're about to create should go into the container's RW layer.
 
-You can create a garbage file like this: `dd if=/dev/random of=/tmp/garbage-file bs=1M count=15 iflag=fullblock`.  
+You can create a garbage file like this: `dd if=/dev/zero of=/tmp/garbage-file bs=1M count=15 iflag=fullblock`.  
 Don't try to `cat` the file because since we took random bytes, it will surely mess up your terminal. If you did `cat` it and messed up your terminal, then:
 
 - press `<Enter>` to clear any remaining command
@@ -372,7 +372,7 @@ We have added a `15MB` file and our container grew by `15MB`. Quite logic. You'l
 ```Dockerfile
 FROM ubuntu:16.04
 
-RUN dd if=/dev/random of=/tmp/garbage-file bs=1M count=15 iflag=fullblock
+RUN dd if=/dev/zero of=/tmp/garbage-file bs=1M count=15 iflag=fullblock
 ```
 
 Let's build it, instantiate a container from it and "log in":
@@ -426,10 +426,10 @@ dca1b241ab47        ubuntu:16.04        "bash"              About a minute ago  
 And now, create our `15MB` file at the mount point (_i.e._ in the volume):
 
 ```Bash
-root@dca1b241ab47:/# dd if=/dev/random of=/data/persistent-garbage bs=1M count=15 iflag=fullblock
+root@dca1b241ab47:/# dd if=/dev/zero of=/data/persistent-garbage bs=1M count=15 iflag=fullblock
 15+0 records in
 15+0 records out
-15728640 bytes (16 MB, 15 MiB) copied, 14.9169 s, 1.1 MB/s
+15728640 bytes (16 MB, 15 MiB) copied, 0.0149029 s, 1.1 GB/s
 
 ```
 
