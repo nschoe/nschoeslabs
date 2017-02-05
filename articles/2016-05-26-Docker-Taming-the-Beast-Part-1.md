@@ -20,7 +20,7 @@ The idea seemed very attractive to me, even more because I recently switched to 
 In another word, my goal in this first post is to spare you the trouble of fishing for information about Docker to understand it as well as sharing the love about Docker, of course! 5 days a week I'm hanging on the #docker IRC chan (I'm **nschoe** by the way, if you want to come and say hello :-)) and too many times I see newcomers asking questions that clearly indicates they are missing some very important base notions: if you're in that case, I hope to help you in this series of articles. Let's fix that together!
 
 ![](/images/warning.png "Notice")I just want to clarify that Docker (and more generally _software containers_) is a complex topic, that goes back all the way down to the _kernel_. I'm not a Docker developers and I'm not an expert on the field. I just like to _understand_, and I work better if I really get what's going under the hood.  
-I'll do my best to transmit what I understand of all of this, but if you spot any mistakes, **please** don't hesitate to [shoot me an email](mailto:ns.schoe@gmail.com) to let me know, I'll fix it.  
+I'll do my best to transmit what I understand of all of this, but if you spot any mistakes, **please** don't hesitate to [shoot me an email](mailto:nschoe@protonmail.com) to let me know, I'll fix it.  
 Likewise, if you're a newcomer and think I missed a point or left a gray area, tell me so I can fill in the gap!
 
 In this first post, we won't play with Docker directly, we won't issue any `docker` commands, but we will understand the basics, the _fundamentals_: what's going on under the hood. But don't worry, we _will_ start playing with Docker right from part 2!  
@@ -421,9 +421,9 @@ Depending on your personality and expectations, you might be frustrated after re
 Too often I see people coming on the #docker IRC chan and ask questions which show that they are trying to use docker like they are trying to use a new text editor. Docker is not simple. The tools on which Docker relies are not trivial. Docker does a wonderful job of packaging complex, low-level tools into a simple, beautiful API (and it has very [well-written documentation](https://docs.docker.com/engine/)). But it still remains that the overall system is a beautifully complex one.  
 It is relatively easy to get a few containers running with Docker, because it makes such a beautiful job of abstracting the complexity away, but if you don't take the time to analyze, document and _understand_ what is going on under, you will quickly run into walls: you won't understand the notion of images vs. containers (topic of next post!), you won't be able to share your environment, you will have your disk space used by up unnecessary redundancy, etc.
 
-On the contrary, you don't need to be an expert in every of the details we saw: I am not myself. This is why I did no go into too much details. Feel free to document more on the topics you want, and if there are topics you'd like me to talk about more in-depth, [email me](mailto:ns.schoe@gmail.com).
+On the contrary, you don't need to be an expert in every of the details we saw: I am not myself. This is why I did no go into too much details. Feel free to document more on the topics you want, and if there are topics you'd like me to talk about more in-depth, [email me](mailto:nschoe@protonmail.com).
 
-I hope I was clear enough and that I shed some lights on some concepts that were obscure, if you still have gray areas, feel free to [email me](mailto:ns.schoe@gmail.com) or poke me (**nschoe**) on IRC (`#docker`).  
+I hope I was clear enough and that I shed some lights on some concepts that were obscure, if you still have gray areas, feel free to [email me](mailto:nschoe@protonmail.com) or poke me (**nschoe**) on IRC (`#docker`).  
 In the next article, I will relieve some of the frustration and we will begin playing with "real" `docker` commands. In the meantime, you don't need to do anything specific, I'll begin the next article with the installation instructions.
 
 **Part II is available to read [here](/articles/2016-07-03-Docker-Taming-the-Beast-Part-2.html)**!

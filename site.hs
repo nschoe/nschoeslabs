@@ -106,7 +106,7 @@ nschoeslabsRSSConfig = FeedConfiguration
     { feedTitle       = "nschoe's labs"
     , feedDescription = "Haskell, Artificial Intelligence and WebRTC."
     , feedAuthorName  = "Nicolas SCHOEMAEKER"
-    , feedAuthorEmail = "ns.schoe@gmail.com"
+    , feedAuthorEmail = "nschoe@protonmail.com"
     , feedRoot        = "http://www.nschoe.com"
     }
 

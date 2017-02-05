@@ -180,7 +180,7 @@ So back to our `docker run ubuntu`, we created and started a process from the `u
 
 This allows me to highlight another specificity of docker containers: they stop when their PID 1 process terminates. This is important: when the process you are running inside your container exits/returns/terminates/crashes, the docker containers stops, because it has nothing to do anymore.
 
-Here it is, I hope I was crystal-clear about the differences between images and containers, because that is arguable the _most important part_ of docker for a newcomer. If you have _any hesitation_, **do not** pursue further: take a break, re-read this part and [shoot me an email](mailto:ns.schoe@gmail.com) if you have to.
+Here it is, I hope I was crystal-clear about the differences between images and containers, because that is arguable the _most important part_ of docker for a newcomer. If you have _any hesitation_, **do not** pursue further: take a break, re-read this part and [shoot me an email](mailto:nschoe@protonmail.com) if you have to.
 
 ![](/images/warning.png "") I have been using the class / object analogy quite a lot, but this is just a simple analogy to give you the feeling. It doesn't mean that they are implemented in terms of class and objects. Besides, don't push the analogy further than what I intended: do not look for concepts of heritage, polymophism, etc.  
 It should be obvious, but one is never careful enough and I just wanted to highlight that.
@@ -1075,6 +1075,6 @@ The first two articles were---I think---the most theoretical. But it was necessa
 
 I hope I made the docker concepts clear, this was the goal of this article. From now one, the articles will be shorter---at least I think!---and _definitely_ more applied. I believe I have covered the majority of the docker concepts that can be applied to build complex setups. It's important that you keep everything we saw in mind, before now, in the following articles, we will apply all of these concepts.
 
-As usual I will try to give as many examples as possible to give you _insights_ and material to go on. I'm not yet settled on the next article, but there's a high probability that we will cover the process of building images and writing Dockerfiles. If you have a personal suggestion, don't hesitate to [shoot me an email](mailto:ns.schoe@gmail.com) and I'll see what I can do!
+As usual I will try to give as many examples as possible to give you _insights_ and material to go on. I'm not yet settled on the next article, but there's a high probability that we will cover the process of building images and writing Dockerfiles. If you have a personal suggestion, don't hesitate to [shoot me an email](mailto:nschoe@protonmail.com) and I'll see what I can do!
 
 **Part III is available to read [here](/articles/2016-10-12-Docker-Taming-the-Beast-Part-3.html)**!
