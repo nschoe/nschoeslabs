@@ -107,7 +107,7 @@ A bit later in the article, we'll see some differences between the two.
 - _Docker is **not** magic._  
 Too often I see newcomers come on the #docker IRC chan asking about quick instructions to achieve X, Y and Z. Docker makes it relatively easy to _use_ very complex notions such as overlay file systems and control groups, but that doesn't mean it's trivial.  
 One particular point on which I insist is that Docker does **not** replace system comprehension. If you find something difficult to understand, do not think that Docker is the solution. More often than not, Docker will actually add a layer of complexity and it might not be clear whether the problem comes from the application or from the fact that it's dockerized.  
-Two days don't pass without someone coming on the #docker IRC chan and ask why its postgreSQL data were lost when he recreated the container, or why the Docker image he is building takes half his disk space.  
+Two days don't pass without someone coming on the #docker IRC chan and ask why their postgreSQL data was lost when they recreated the container, or why the Docker image they are building takes half their disk space.  
 In a word, you need to understand the underlying concept before using Docker. I have spent hours in the Docker documentation, and I have have doubts every time I use Docker for something new: am I really good enough in XYZ to replace the common method by Docker containers?  
 
 If it was not concrete enough: don't try to containerize a postgreSQL database if you're not familiar with postgresql (can you do common administration tasks with `psql`? Do you know how to create, list, alter and delete tables? do you know how to save and backup your postgreSQL table?).  
@@ -124,7 +124,7 @@ I will talk about what's under the hood of Docker and how it makes the magic hap
 In order to get rid of false ideas and our intuition (which, in this case, is most likely playing us), we'll talk about how Docker does _not_ work.
 
 As I said before, Docker is **not** a virtual machine; let's see how one roughly works, then.  
-A _virtual machine_, as its name implies is like a real machine, only it's "virtual", as in "inside another machine". It behaves very much like a real, fully-fleged machine (computer).
+A _virtual machine_, as its name implies is like a real machine, only it's "virtual", as in "inside another machine". It behaves very much like a real, fully-fledged machine (computer).
 
 When using a virtual machine, you generally create a virtual hard disk, which is a big file on the host's filesystem, you allocate some of the host's RAM and video memory to the virtual machine, by making it accessible through special, low-level routines.  
 On the virtual hard drive, you install a _complete operating system_ (Windows, Linux, etc.) from scratch. It means that from the point of view of the installer inside the virtual machine, it's like it's really writing to a disk (only it's a file on the host, but it -the installer- doesn't know it). But that doesn't change much: you still partition it, you still create filesystems on the partitions (FAT, ext3, ext4, etc.).  
@@ -158,14 +158,14 @@ We'll explore how it is achieved in the following sections.
 So what are those _namespaces_? We keep hearing about them, but what _are they_?  
 To answer this question, we need to have a little understanding of how the Linux kernel works. Especially about **processes**.
 
-Processes are instances of a program. When you run a program, it created a process. Now there are some programs that creates several processes, but you can think of it at if the program itself launched other small programs. Note that I am not talking about threads, threads are another beast. A single process can spawn several threads to make use of multithreading, to parallelize operations. Here, I am talking about processes, programs.
+Processes are instances of a program. When you run a program, it created a process. Now there are some programs that creates several processes, but you can think of it as if the program itself launched other small programs. Note that I am not talking about threads, threads are another beast. A single process can spawn several threads to make use of multi-threading, to parallelize operations. Here, I am talking about processes, programs.
 
 So, at any given time, there are a lot of processes running on your computer, you can have an idea: try running `ps -A | wc -l`. It will return a number, this is close to the number of processes running at that time. Right now, I have `149` processes running.
 
 It's important to have an understanding of how these processes interact with each other.
 
-Let's play a little bit. Launch your favorite terminal, it should present you a shell. For the vast majority of people, this will be `bash`; I'm using `zsh` myself, but the principle will be exactly the same.  
-Now that you are in your shell, run `touch test` to create a file named `test`. Then run `tail -f test`. What this does is launch the program `tail` in "follow" mode, which mean that it keeps watching the content of `test` (currently empty) for new output. We don't really care about that, all that we care about is that `tail` won't terminate: it will keep running.
+Let's play a little bit. Launch your favorite terminal, it should present you with a shell. For the vast majority of people, this will be `bash`; I'm using `zsh` myself, but the principle will be exactly the same.  
+Now that you are in your shell, run `touch test` to create a file named `test`. Then run `tail -f test`. What this does is launch the program `tail` in "follow" mode, which means that it keeps watching the content of `test` (currently empty) for new output. We don't really care about that, all that we care about is that `tail` won't terminate: it will keep running.
 
 Now run another terminal, we will try to see what's happening. As you probably already know, `ps` is what we can use to see the running processed. We will format a bit its output so that it is more readable. Run `ps -Ao ppid,pid,user,fname`. This launches `ps` to print a snapshot of the current running processed, and format the output, to display, in the order: the "parent PID", the PID, the user who executed the process and then the process name.  
 It should return a pretty long list, but toward the end, you should see something like this:
@@ -258,9 +258,9 @@ And here we are! The parent process is `urxvtd` (this is my terminal emulator, y
 You thought I had forgotten?  
 We haven't been avoiding namespaces, actually we have been laying the bricks to understanding them. Keep in mind everything we have seen about child and parent processes, and the init process as it will be useful in a minute.
 
-Now, there is something you and I have been doing for some time now and which will be crucial to understanding Docker containers and isolation. We have launched several terminals and several programs (like `tail` for instance). Then we have run `ps` which allowed us to **observe** (I should say "spy on", really) other processes. And with `kill` we have, well, killed other processes.
+Now, there is something you and I have been doing for some time now and which will be crucial to understanding Docker containers and isolation. We have launched several terminals and several programs (like `tail` for instance). Then we have run `ps` which allowed us to **observe** (I should say "spy on", really) other processes. And with `kill` we have, well... killed other processes.
 
-And believe it or not, this is the key to understand all that: we have made processes _interact with each other_. Which is fabulous because it allowed us to do everything and which is a disaster, because it means that if we have some process that we want to have running, others could kill it, or inspect it. And this is the **opposite** of isolation!
+And believe it or not, this is the key to understand all that: we have made processes _interact with each other_. Which is fabulous because it allowed us to do everything but it is also a disaster, because it means that if we have some process that we want to have running, others could kill it, or inspect it. And this is the **opposite** of isolation!
 
 Well, all of this is possible, because all of these processes run in the _same namespace_. To put it simply, we can consider that a namespace is an init tree. Here, we have one `init` process, which is the (more or less distant) parent of every other processes running: it defines one namespace. One key concept of Docker and process containerization in general is to create _separate namespaces_.
 
@@ -282,11 +282,11 @@ A typical namespace, like you have right now on your computer looks like this:
     (...)
 ```
 
-The top-most process has PID `1` and is the init process (most likely called `systemd` on your machine). Then this init process has direct children, here we can see two: `zsh` with PID `6728` and `firefox` with PID `7839`.  
+The top-most process has PID `1` and is what we call the init process (most likely called `systemd` on your machine). Then this init process has direct children, here we can see two: `zsh` with PID `6728` and `firefox` with PID `7839`.  
 both `zsh` and `firefox` have children of their own, as you can see. The figure above forms a tree.
 
 Now what happens with containerization and Docker? Well, if you want to run isolated processes, the first thing you need is for these processes **not** to be able to do what we have been doing up until now, _i.e._ spy on other processes and interact with them. You need to completely isolate them.  
-The way it is done is that we create a _second init process tree_, _i.e._ a second namespace.  
+The way this is done is by creating a _second init process tree_, _i.e._ a second namespace.  
 Let's say we want to containerize `nginx`, a web server. Nginx is started from a shell, bash for instance. We'd like `bash` and `nginx` to be isolated from the rest of the system, so we have to "make them believe" they are in their own namespace. So based on what we've seen so far, they need their own PID `1` init process. In this case, `bash` can be the PID `1` init process, and it will be `nginx`'s parent process.
 
 But of course, we actually have only one machine (the host) and one operating system (our Linux distribution), because **we are _not_ running a virtual machine**, so whatever program we launch (that includes `bash` and `nginx`), they will be child processes of the "real" PID `1` init process, the one running on our system, _i.e._ `systemd`. Here is how the processes tree will look like:
@@ -320,13 +320,13 @@ ____|___________________________________________
 You recognize the first items of the tree: we have our machine PID `1` process, `init`. It started `zsh` and `firefox` as it previously did, and them have started child processed themselves.  
 Now the new part: we have our isolated process tree _or -namespace_ which I have artistically ASCII-art-decorated. In this isolated tree, `bash` has PID `1` (the number enclosed in parentheses). This `bash` started another process, `nginx`, which has PID `4539`. Nginx is usually comprised of a core process which read its configuration and creates children as needed to handle requests, here it created a child -called a "worker"- whose PID is `4540`.
 
-When we are more advanced in Docker, we'll come back to this and actually see it for ourselves, but now, believe me when I say that if we "logged in" this isolated environment and ran `ps`, we would _only_ see this.
+When we are more experienced in Docker, we'll come back to this and actually see it for ourselves, but now, believe me when I say that if we "logged in" this isolated environment and ran `ps`, we would _only_ see this.
 
-But facts are, all these `bash` and `nginx` (everything that is part of the isolated process tree) actually runs on the host Linux system, right? They are "classical" processes, and they **must** have PIDs. This is the number I wrote before the parentheses. This _extremely important and useful feature_ which allows a process to have several PIDs has been introduced in version 2.6.24 of the Linux Kernel, in 2008!
+But the truth is, all these `bash` and `nginx` (everything that is part of the isolated process tree) actually runs on the host Linux system, right? They are "classical" processes, and they **must** have PIDs. This is the number I wrote before the parentheses. This _extremely important and useful feature_ which allows a process to have several PIDs has been introduced in version 2.6.24 of the Linux Kernel, in 2008!
 
 So this is what we are talking about when we mention namespaces: nested sets of process trees in which processes can't "get out". From inside the isolated process tree, you cannot observe processes outside of it by running `ps` and you definitely can't kill them with `kill`. This is the first step of program isolation which Docker uses.
 
-Why "the first step"? Why isn't it enough? Well, there still are plenty of ways that these isolated processes can interact with the host system: we haven't protected the filesystem, so they can read/write to the host's files, they can run very expensive computing operations and take all CPU and RAM, etc. As for now, we have isolated the processes from seeing and _directly_ interacting with each other, but Docker goes even further.
+Why "the first step"? Why isn't it enough? Well, there are still plenty of ways these isolated processes can interact with the host system: we haven't protected the filesystem, so they can read/write to the host's files, they can run very expensive computing operations and take all CPU and RAM, etc. As for now, we have isolated the processes from seeing and _directly_ interacting with each other, but Docker goes even further.
 
 Let's take a little break and enjoy the fact that we _finally_ can put something concrete on the notions of "namespace" and "isolation".
 
@@ -346,7 +346,7 @@ Layers are the other "magic" component of Docker and solve the other problem we 
 
 ![](/images/warning.png "") Talking about layers with Docker without talking about _images_ and _containers_ would be a challenge, and a pretty useless one in my opinion.  
 However, I'd like to avoid talking too much about Docker images and containers in this post, because the second article will be about them.  
-So try to focus on the _meaning_ and not on the detail for this part. I hate articles that say "trust me" and obsure things, but in this case, I don't really have a choice, otherwise this article will grow in size.  
+So try to focus on the _meaning_ and not on the details for this part. I hate articles that say "trust me" and obscure things, but in this case, I don't really have a choice, otherwise this article will grow in size.  
 I _promise_ I'll talk _in details_ about images and containers in the next article, and I'll even clarify this notion of layers, but for the moment, focus on the notion behind it.
 
 If we want to present a truly isolated environment to our processes, we must hide the host filesystem from it and expose a clean, predictable one.
@@ -408,13 +408,13 @@ Without going into more details, this precedence thing solves one problem: "what
 
 Anyway, this is a detail of implementation that we are not yet ready for.
 
-#### What Did You Talk About Layers in the First Place?
+#### Why Did You Talk About Layers in the First Place?
 Because it's very very important to Docker, and is arguably the core feature (well, not really, processes isolation is too). When you create a docker container, as I said before, it has to run in its own "place", with its own set of processes (we've already covered that) and _its own filesystem_.
 
 And union filesystem (along with union mounts) are how it's done: when you create a new container, Docker makes use of union mounts to mount all essential files and directories (this is why/how you **do** get a classic, linux filesystem architecture inside your containers: `/`, `/etc`, `/var`, `/usr`, `/home` etc.) and by making extensive use of shadowing, it can effectively "delete" or "mask" everything that's related to the host. This is why you do get a `/etc` directory in your container, but you don't get your specific, host-related `/etc/file.conf`.  
 In the same sense, this is how it allows you to write files in your container and not "pollute" your host environment and other containers.
 
-Actually, union filesystem is used extensively in another place in Docker: containers and images. But this is a topic of its own, which is very often confused so I'd like to take some proper time to explain it. In another post.
+Actually, union filesystems are used extensively in another place in Docker: containers and images. But this is a topic of its own, which is very often confused so I'd like to take some proper time to explain it. In another post.
 
 ## Conclusion
 Depending on your personality and expectations, you might be frustrated after reading this first article because I did not use any `docker` command.  

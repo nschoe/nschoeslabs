@@ -216,7 +216,7 @@ This third option does not do this, instead, it links a directory inside the con
 
 But there _are_ big differences that make them both interesting, let's see them:
 
-First of all, with this third syntax, you can _chose_ the host's directory that you are mounting on the container. On the first syntax, when you specified a name and a path, you had no control of it, and had I not told you, you would not have known it was stored under `/var/lib/docker/volumes`.  
+First of all, with this third syntax, you can _choose_ the host's directory that you are mounting on the container. On the first syntax, when you specified a name and a path, you had no control of it, and had I not told you, you would not have known it was stored under `/var/lib/docker/volumes`.  
 You would have been fine without this information, but I feel that it helps to understand what's going one: I did not want you to think that Docker Volumes were an ancient form of black magic. It is really simple, and I wanted to show you so that when you use Docker Volumes, you understand what you are _really_ doing.
 
 Since you can share an arbitrary directory, it is possible that you can forget doing so. It is possible, then, that you modify the directory's content (even, delete it) causing some unexpected problems within the containers.
@@ -225,7 +225,7 @@ It is unwise, then, to use a host's directory to make data persistent. I **stron
 Just to make sure it's clear, when you use this syntax, you can say that your host's `/home/nschoe/tests` is mounted on the container's `/tmp/foo`. You can literally mount any directory---provided you have access to it, obviously---to the container.  
 But will you remember in six months that your host's directory `/home/nschoe/tests` is actually mounted and needed by a container? I don't think so. This is why it's dangerous.
 
-Another difference is that, since you can chose any host's directory to share with your container, you can chose one that already has contents. Doing so would make the contents available inside the container.  
+Another difference is that, since you can choose any host's directory to share with your container, you can choose one that already has contents. Doing so would make the contents available inside the container.  
 And this is a very interesting thing to do: you can make data on the host available inside the container, or the converse: easily taking data out of the container.
 
 Suppose your container is set up to have a toolchain, perform some action, and produce some output files that are of interest to you. How do you get these back? Well, mounting a host's directory and putting those file in it are a pretty good solution.
@@ -636,7 +636,7 @@ world
 
 Hell yeah! So you see, it's very easy: the `--volumes-from <container-name>` allows to mount all volumes from the specified container(s) at the same mount points.
 
-I hope you appreciate the power of this option and its value. But be careful not to use it wrongly: since you cannot filter or chose volumes that you mount (you mount them all), you should do this only when you _need_ to mount all volumes. If you need to share a single volume, then you should find the volume name and mount it manually.  
+I hope you appreciate the power of this option and its value. But be careful not to use it wrongly: since you cannot filter or choose volumes that you mount (you mount them all), you should do this only when you _need_ to mount all volumes. If you need to share a single volume, then you should find the volume name and mount it manually.  
 Mounting all volumes with `--volumes-from` is especially useful when you want to backup a container: you instantiate a container than uses all volumes from another, make you backups, and then exit.
 
 By now, I'm sure you have at least four questions regarding `--volumes-from`, which must be:
@@ -644,7 +644,7 @@ By now, I'm sure you have at least four questions regarding `--volumes-from`, wh
 1. Can we can "chain" the `--volumes-from` calls, _i.e._ create a container `"C3"` that uses `--volumes-from C2`?
 1. Can we use `--volumes-from` from a stopped container?
 3. How do we specify several containers in `--volumes-from`?
-4. Since we can't chose the mountpoints, what happens when I specify several containers to `--volumes-from` and two of them should be mounted on the same mountpoint?
+4. Since we can't choose the mountpoints, what happens when I specify several containers to `--volumes-from` and two of them should be mounted on the same mountpoint?
 
 Well let's tackle them one by one.
 
@@ -946,7 +946,7 @@ VOLUME     ["/data"]
 ```
 
 This is simple enough: we create a `/data` directory and write something in a file in `/data`. Next we call `VOLUME ["/data"]` in the Dockerfile.  
-This will have the effect of creating (at run time, obviously) a Named Volume mounted on `/data` with some data in it: the `file1` with the string `"Hello, world!"`.
+This will have the effect of creating (at run time, obviously) an Anonymous Volume mounted on `/data` with some data in it: the `file1` with the string `"Hello, world!"`.
 
 Let's check this out, first let's build the image: `docker build -t test-vol:1 .`.
 
@@ -1083,7 +1083,7 @@ I hope this article about Docker Named Volumes was good enough for you and I hop
 Let us recap _briefly_ what we have seen about Volumes, so that it serves as a reminder when you seek something.
 
 Images are basically a set of read-only layers, which correspond to Dockerfile statements and represent individual increments (installing programs, creating directories, files, etc.) from a base image.  
-When we have an image, instantiating a container from it is as simple as---and as fast as---creating a new layer, with  read-write permissions and stacking it on top of the image layers. From here on, everything you do inside a container is recorded in this container's RW layer. This is great because it makes containers _so cheap_ you can instantiate hundreds of them in the blink of an eye, but the cons are that when you destroy the container, you loose everything (because destroying a container is simply a matter of destroying the container's RW layer), and thus, this mechanism is ill-fitted to store permanent data, such as the data from log files or from a database.
+When we have an image, instantiating a container from it is as simple as---and as fast as---creating a new layer, with  read-write permissions and stacking it on top of the image layers. From here on, everything you do inside a container is recorded in this container's RW layer. This is great because it makes containers _so cheap_ you can instantiate hundreds of them in the blink of an eye, but the cons are that when you destroy the container, you lose everything (because destroying a container is simply a matter of destroying the container's RW layer), and thus, this mechanism is ill-fitted to store permanent data, such as the data from log files or from a database.
 
 Then we discovered the Docker Volumes, which are a mechanism to _bypass_ the unionFS. When you create a Volume and mount it inside a container's path, every operations that is done at this mounpoint will **not** be recorded in the container's RW layer, instead it will be recorded straight on the host's disk, in a special, docker-specific, root-protected location (`/var/lib/docker/volumes/` by default).  
 The advantage of this is that when you destroy the container, the data inside the volume remain on disk, this is called _making data persistent_. The cons of this is that it's easy to forget about a Volume after the container(s) that use it is (are) deleted, and it can end up taking a lot of space on your hard drive---but this is where the `docker volume prune` command becomes useful.
