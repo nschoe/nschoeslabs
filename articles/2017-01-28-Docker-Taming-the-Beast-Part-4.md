@@ -1106,3 +1106,5 @@ In the next article (Part V), we will see "the last" part of Docker before we ca
 But as often with Docker, they are a _very_ misundertood feature, so I want to make the article extra-clear, with lots of examples etc. I will work as hard as I can not to take too long to write the article, but it's most likely to be a big one too (but I think you're accustomed now, and you seem to like it, don't you?!).
 
 So this is a good-bye, and see you in Part V!
+
+**Part V is available [here](/articles/2017-09-12-Docker-Taming-the-Beast-Part-5.html).**
