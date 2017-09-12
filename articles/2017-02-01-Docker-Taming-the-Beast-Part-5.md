@@ -11,6 +11,34 @@ Hello again and welcome to Part V!
 Part V... this begins to look like a real series of articles, I'm happy. And I'm happy that you're still with me.  
 If you missed it, [here](/articles/2017-01-28-Docker-Taming-the-Beat-Part-V.html) is the Part IV, and in case you're new here, you can start at the beginning [here](/articles/2016-05-26-Docker-Taming-the-Beast-Part-1.html).
 
+_Small disclaimer_
+
+_I'm sorry that this article took so much time, and I know you have been waiting for it: thank you for your emails.  
+As you will see, this article is **very** long (about twice as long as Part IV, which you surely recall was already quite big). This is because, as I will hint in this article, the topic is **extremely** important and this was crucial for me to get it right.  
+I hope I managed it and I hope I will definitely clarify everything about Docker Networks.  
+Have fun reading the article and thanks to all of you who supported me through email, this is **highly** appreciated!_
+
+### Answering Part IV's Question
+
+Before we begin with Part V, if you remember correctly, I left a question without an answer in Part IV. It was at the end of section ["Verifying the Read-Write Layer Conspiracy"](/articles/2017-01-28-Docker-Taming-the-Beast-Part-4.html#verifying-that-it-works).  
+We were checking container's size. In a first example we had created an image with a certain size. Then we had added a `15MB` file in it and then the container's size grew by `15MB`. When we deleted the file, the container's size shrank by `15MB`. Quite logic.
+
+But then we had created a Dockerfile from the same image, but this time we created the `15MB` file directly in the Dockerfile (as part of the image). But then when we deleted this file in a container, it did _not_ shrink. Why was that?!
+
+The answer, albeit a bit tricky is quite simple. In the first example, when we created the `15MB` file in the container, the data from this file was put in the container's RW layer (remember this is a layer that goes on top of the image's layer, because an image is frozen, you can't alter it). And so when we deleted the file, it was simply deleted from the container's RW layer.
+
+But in the second example, the file is being created _in the image_. So the `15MB` file is _part of the image_. In other words, the data for this file is put in the image's layers. So when we first instantiate a container, it's RW later is empty. The total size is the same, though.  
+But since we cannot modify an image's layers, we can't simply delete the `15MB` file like we did earlier (since it is _in fact_ in the image's layers!). But we still need the file to disappear, because we ran `rm` on it!
+
+The way to solve this was to create a "shadow file" in the container's RW layer. Basically, when you delete a file or a directory that is part of the image's layers, a new, very small file is put in the container's RW layer, that "hides" or "shadows" the target file. It's like you cover the file and say "well, from now on, it doesn't exist anymore". And then when you run `ls` or the likes, the file is hidden / shadowed and it doesn't appear to you.
+
+Note that it is not simply hidden for your eyes when you run `ls`, it's hidden filesystem-wise, it's hidden for the actual system.  
+But since the actual bytes are not removed, it explains why the image's size did not change.
+
+That's it!
+
+### Road To Awe
+
 Last time, we saw how we could make part of our data persistent and bypass the unionFS mechanism. This was especially important if we did not want to lose data, and this allowed us to have truly ephemeral containers, _i.e._ containers that we can shutdown / destroy and recreate at any moment.  
 This is really important, and I have had lots of examples in the last couple of weeks. On the #docker IRC chan, there has been quite a number of people that came and asked variants of "is this possible to bind ports on a container without destroying and recreating it?". This is not possible, the only solution is to effectively destroy the container and recreate it with the correct ports binding, and that should not be a problem!  
 Since containers should be ephemeral, all important data should be stored in Volumes: destroying containers should _never_ be a problem.
@@ -27,7 +55,7 @@ In this article, we will need to test network connectivity because we'll be talk
 
 So we will use `netcat` to test connectivity, which is the normal, standard Linux way. If you already know how to use `netcat` easily, this will allow you to focus entirely on the Docker networking aspect. If you do not, fear not, this is _very_ easy to understand, I _will_ explain everything, as usual and you'll get to have one more tool in your toolbox!
 
-And since I can already hear you complaining about the fact that we don't make a real example, don't worry: I've decided that Part VI will be a full article, entirely dedicated to making a slightly complex stack, real example.
+And since I can already hear you complaining about the fact that we don't make a real example, don't worry: I am cooking an upcoming Part which will be a full article, entirely dedicated to making a slightly complex stack, real example.
 
 Happy? :)
 
@@ -100,13 +128,13 @@ Let's emulate this by creating two containers, we will name them accordingly, bu
 Just before we begin, we have a small thing to do. Since we will be using `netcat` a lot in this article, we need an image with `netcat` installed; otherwise it will be a pain to re-install it everytime.  
 Up until now, we have only worked with the `ubuntu` and `nginx` images. So as not to change too many variables at the same time---which is often crucial to learn correctly---we will keep using `ubuntu` as a base image.
 
-So let's make a very small Dockerfile that creates a `test-net` image:
+So let's make a very small Dockerfile that creates a `net-test` image:
 
 ```Dockerfile
 FROM       ubuntu:16.04
 MAINTAINER nschoe<nschoe@protonmail.com>
 
-RUN        apt update && apt install -y --no-install-recommends netcat inetutils-ping
+RUN        apt update && apt install -y --no-install-recommends netcat inetutils-ping iproute2
 ```
 
 Now build it with `docker build -t net-test .` and it's done. **Obviously** starting from such a big image as `ubuntu:16.04` (which is in the `600MB`) _just_ to have `netcat` is highly inefficient. But the goal here is to learn about networks.
@@ -159,31 +187,31 @@ root@9e09afc2d19a:/# netcat 6995c50eaff3 54321
 6995c50eaff3: forward host lookup failed: Host name lookup failure : Resource temporarily unavailable
 ```
 
-So the first had no chance of succeeding: in the fake-nginx container, I tried to connect to host 'fake-nginx', which is localhost, and we've just seen that it failed.
-The second attempt however, made much more sense; we tried to connect to the host of the fake-postgresql container, which _should_ work.
+So the first had no chance of succeeding: in the `fake-nginx` container, I tried to connect to host `fake-nginx`, which is localhost, and we've just seen that it failed.
+The second attempt however, made much more sense; we tried to connect to the host of the `fake-postgresql` container, which _should_ work.
 
 It takes time, but then eventually it fails. And _this_ precisely, is our problem: containers are _isolated_, even on the network stack.
 
 So this is what starts this whole article: how do I make these two (or more) containers communicate?
 
-Now I hope I convinced your that we do have a problem, and now let's see if I can help you understand how to fix it!
+Now I hope I convinced you that we do have a problem, and now let's see if I can help you understand how to fix it!
 
 ### Two Separate Use-Cases
 
-So we have experienced the container's network isolation, and we have understood that this might be a problem when we actually need communication. The rest of this article will be about how to break that isolation in a controlled way.
+So we have experienced the containers' network isolation, and we have understood that this might be a problem when we actually need communication. The rest of this article will be about how to break that isolation in a controlled way.
 
-As often with Docker, there is more than one way to do this, and as it is always the case, they correspond to different use-cases.
+As often with Docker, there are more than one way to do it, and as it is always the case, they correspond to different use-cases.
 
-Here, when it comes to network isolation, we will talk about two use cases. This might be a little early, but I'd like you to take a minute (you know, we have talked about this... do try to think about this for a minute, see if you can find ideas) to find the two use cases.  
-Here is advice: it deals with whom containers have to talk to.
+Here, when it comes to network isolation, we will talk about two use-cases. This might be a little early, but I'd like you to take a minute (you know, we have talked about this... do try to think about this for a minute, see if you can find ideas) to find the two use-cases.  
+Here is a piece of advice: it deals with whom containers have to talk to.
 
 ...
 
 I hope you tried, let's see if you got that right!
 
-The first use case is simple: this is the one we've just demonstrated; it is when two (or more) containers need to talk to each other. It might be that you have a webserver (like `nginx`) that needs to talk with a database (`postgresql`), maybe we can even imagine a caching stage (like `redis`). All these containers need to talk to each other, and so it is a first use case.
+The first use-case is simple: this is the one we've just demonstrated; it is when two (or more) containers need to talk to each other. It might be that you have a webserver (like `nginx`) that needs to talk with a database (`postgresql`), maybe we can even imagine a caching stage (like `redis`). All these containers need to talk to each other, and so it is a first use-case.
 
-The second use-case if when **the host** needs to talk with a container. You might have forgotten about this, but if Docker can be used to ship applications in a controlled environment for a client, or be used to deploy a great number of application stacks, it _can_ also be used to containerize one instance of a program for use on your host.
+The second use-case if when **the host** needs to talk with a container. You might have forgotten about this, but if Docker can be used to ship applications in a controlled environment for a client, or be used to deploy a great number of application stacks, it can _also_ be used to containerize one instance of a program for use on your host.
 
 Since your host (_i.e._ the computer running docker) is not a container, there are different mechanisms to make it communicate with the containers. We will see both cases.
 
@@ -191,9 +219,9 @@ Since your host (_i.e._ the computer running docker) is not a container, there a
 
 We will start with how we can make the host communicate with containers, as it is generally the first use-case people have.
 
-Suppose you are trying to containerize a web server, like `apache` or `nginx` for your host (for instance, to serve your local, self-hosted website(s)). This is a classic situation. You might be interested in trying a new version of your webserver but are not ready to upgrade the version on your host, or you might be trying to switch from one to another, or your simply want to keep it isolated from the rest of your environment.
+Suppose you are trying to containerize a web server, like `apache` or `nginx` for your host (for instance, to serve your local, self-hosted website(s)). This is a classic situation. You might be interested in trying a new version of your webserver but are not ready to upgrade the version on your host, or you might be trying to switch from one to another, or you simply want to keep it isolated from the rest of your environment.
 
-Anyway, this is what we are trying to do. The same kind of problem that we saw in the very first paragraph will arise: we need a way to access our container, as it is it, who is running the webserver and has the data in it.
+Anyway, this is what we are trying to do. The same kind of problem that we saw in the very first paragraph will arise: we need a way to access our container, as it is it, which is running the webserver and has the data in it.
 
 The situation is really simple: when we create a container for `apache` or `nginx`, and we're done configuring it, this server inside will listen to ports `80` and `443`. But Docker is good at isolation, and thus he created a nice, little isolated network environment for the container. Meaning that the container has its own new (virtual) network interface, and through it it communicates (or not) with the rest of the world.  
 Remember: the goal of Docker toward your containers, is to make them believe they are running alone in the system, and control everything it can about it, including its Network I/O.
@@ -222,60 +250,59 @@ $> ip -oneline link show
 11: veth9170aac@if10: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default \    link/ether 42:a7:d9:db:ca:17 brd ff:ff:ff:ff:ff:ff link-netnsid 0
 ```
 
-Here you can see a new (virtual) network interface named `veth9170aac@if10`. the `"veth"` prefix stands for `"virtual ethernet"`, and it reprensents the (ethernet) network interface of the container we have just created.
+Here you can see a new (virtual) network interface named `veth9170aac@if10`. the `"veth"` prefix stands for `"virtual ethernet"`, and it represents the (ethernet) network interface of the container we have just created.
 
-The goal of all of this, is that _for the container_, it has its own network interface. This means that you are free to use any port inside the container, as they are separated from the host's network interface. By defalt then, "all ports are free".
+The goal of all of this, is that _for the container_, it has its own network interface. This means that you are free to use any port inside the container, as they are separated from the host's network interface. By default then, "all ports are free".
+
+The TL;DR of this is that port `N` for the container is not _really_ port `N` on your (host) machine. Actually it is not even a port at all for the host machine (this actually involves `iptables` rules, more on this later in this article).
 
 ### Okay, So How do I Make My Host and My Container Talk to Each Other?
 
 You bind ports. That's how.  
 What that _means_, is that you bind (as in "connect") a port on one of the host's network interface, to a port on the container's network interface.
 
-Concretely that means, that everything going through one of these ports if going out on the other. You can link the host's port 444 to the container's 443 ports. This way, when you're accessing the host's 444 ports, your requests are actually forwarded to the container's 443 port, and vice-versa.  
-If the host's interface on which the port is bound has external (Internet) connectivity, this is how you can make people outside access your container's services.
-
-
-[INSERT yED DRAWING HERE TO DESCRIBE HOW WE JUST BROKE THE ISOLATION]
+Concretely that means, that everything going through one of these ports is going out on the other. You can link the host's port 444 to the container's port 443. This way, when you're accessing the host's 444 port, your requests are actually forwarded to the container's 443 port, and vice-versa.  
+If the host's interface on which the port is bound has external (Internet) connectivity, this is how you can grant people outside access to your container's services.
 
 As often with Docker, there are several syntaxes, let's review them here.
 
 ### Explicit Mapping
 
-When binding ports with explicit mapping, you define exactly which ports on the container is bound to which ports on the container. This is obviously done at run time (_i.e._ `docker run`). For that, you use the `-p` (this is lowercase `p`). The syntax is: `docker run -p <hostPort>:<containerPort>`.  
+When binding ports with explicit mapping, you define exactly which ports on the container are bound to which ports on the container. This is obviously done at run time (_i.e._ `docker run`). For that, you use the `-p` (this is lowercase `p`). The syntax is: `docker run -p <hostPort>:<containerPort>`.  
 For instance, to bind the container's 443 port to the host's 444 port, you would do `docker run -p 444:443 <image>`.
 
 Also some people find it counter-intuitive (I don't), make sure to remember that the first is the **host's** port and the second is the container's.  
 Of course, nothing prevents you from using the same port, so you can run `docker run -p 443:443`. This is used when you want to containerize a service on the host.
 
-This goes without saying, but once you bind a port on the host, you cannot re-use that port. This is not docker, this is classic networking, right? You cannot have two applications listening on the same port, this is why I said that explicit port mapping is used when you want to containerize a service on the host: usuall you have **one** nginx instance running on your computer and it has responsibility of the port 443.  
+This goes without saying, but once you bind a port on the host, you cannot re-use that port. This is not docker, this is classic networking, right? You cannot have two applications listening on the same port, this is why I said that explicit port mapping is used when you want to containerize a service on the host: usually you have **one** nginx instance running on your computer and it has responsibility of the port 443.  
 Well, here this is the same: you have **one** container running nginx and you've bound the ports 443 of both. If you want another nginx instance, your need to bind this second instance's 443 port to another port on the host.
 
 ### Random Mapping
 
-This is the opposite of explicit port mapping. In this scenario, you want to bind the container's port to _a port_ on the host. This is used when you want to have several instances of the same application, and you want to bind the ports. But you don't want to / cannot specify the ports every time.
+This is the opposite of explicit port mapping. In this scenario, you want to bind the container's port to _a port_ on the host (understand: you don't know / care which one). This is used when you want to have several instances of the same application, and you want to bind the ports. But you don't want to / cannot specify the ports every time.
 
 The syntax is: `-p <containerPort>`. For instance: `-p 443`. This is basically saying "I want the container's 443 port bound to the host, use a random port on the host".
 
-This is cool because you don't have to remember and specify the ports on the host on which you want to bind, but the drawback is obviously that you need a way for the application that needs to contact your container to discover the port it needs to connect to.
+This is cool because you don't have to remember and specify the ports on the host on which you want to bind (so this is easier to automate), but the drawback is obviously that you need a way for the application that needs to contact your container to discover the port it needs to connect to.
 
-A use case for this can be for debugging. For instance, if you have a setup that includes spawming database containers, you can bind the database server's access port randomly on the host. Most of the time, you would not need it, so it doesn't really matter, but when comes the days when you need to debug, find the port (we'll see how at the end of this section) and connect to it.
+A use-case for this can be for debugging. For instance, if you have a setup that includes spawning database containers, you can bind the database server's access port randomly on the host. Most of the time, you would not need it, so it doesn't really matter, but when comes the days when you need to debug, find the port (we'll see how at the end of this section) and connect to it.
 
 Note that when binding to random ports, the random ports are chosen in the 32,7xx range.
 
 ### Specific Interface
 
-By default, when you bind ports (whether specifically or randomly), it is bound on interface `0.0.0.0`, which means "all interfaces". What this means is that if you bound your nginx's `443` ports to the host's `443` ports (for instance), when this `443` ports will be routed to your container's, whatever the interface used: `eth0`, `eth1`, `wlan0`, `localhost`, etc.
+By default, when you bind ports (whether specifically or randomly), it is bound on interface `0.0.0.0`, which means "all interfaces". What this means is that if you bound your nginx's `443` ports to the host's `443` ports (for instance), then this `443` port will be routed to your container's, whatever the interface used: `eth0`, `eth1`, `wlan0`, `localhost`, etc.
 
 It is common for servers to have several network interfaces (meaning several Ethernet connections for instance, several network cards) with different IPs. If you don't specify otherwise, Docker will bind ports on all of these interfaces.
 
-This can be useful (for instance in the case of binding commonly-used ports, like `80`, `443`, etc.). But it might also be very dangerous: if we take the previous example, where I said that if you had several database containers, you could bind the server port (`5432` for PostgreSQL for instance) randomly so that you could debug when needed, then it is dangerous. Doing this would essentially open a port on the outside that is routed to your container's db.  
-Normally you have set up well-protected user and passwords to access the database, but still, this is dangerous.
+This can be useful (for instance in the case of binding commonly-used ports, like `80`, `443`, etc.). But it might also be very dangerous: if we take the previous example, where I said that if you had several database containers, you could bind the server port (`5432` for PostgreSQL for instance) randomly so that you could debug when needed, then it is dangerous. Doing this would essentially open a port on the outside that is routed to your container's database.  
+Normally you have set up well-protected users and passwords to access the database, but still, this is dangerous.
 
 Let's see a quick example of this.
 
 First, find one public IP of your host with `ip addr show`, under the `inet` section (for ipv4 address) or `inet6` (for ipv6 address).  
 This is your "public ip" (I'm using quotes here, because if you're doing this on your own computer, at home or at work, you're most likely behind a router NAT-ing your connection, so you'll have a local IP on the network ; only if you're doing this on a remote server will you have a real "public" IP).  
-But it doesn't matter, it works exactly the same, just consider it to be your IP to be public, the one unknown users on the Internet use to connect to you host).
+But it doesn't matter, it works exactly the same, just consider it to be your IP to be public, the one unknown users on the Internet use to connect to your host).
 
 ```Bash
 $> ip -o addr show
@@ -289,7 +316,7 @@ $> ip -o addr show
 
 As you see on the 3rd line (first entry prefixed `2:`, I'm using my `wlp4s0` interface here, and my "public ip" is: `192.168.43.28`).
 
-Then create a container from image `postgres`, bind the port `5432` (in PostgreSQL, this port is the ports used to connect to the database server, so this is where you can take control of the database if you manage to connect).  
+Then create a container from image `postgres`, bind the port `5432` (in PostgreSQL, this port is the port used to connect to the database server, so this is where you can take control of the database if you manage to connect).  
 You are most likely to already have port `5432` listened to on your host, so if you can afford stopping the postgres on your host for a couple of minutes, do it: `sudo systemctl stop postgres`, otherwise, in the next command, change the port on the host on which you bind the container's `5432` port.
 
 ```Bash
@@ -312,7 +339,7 @@ PORT     STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 0.04 seconds
 ```
 
-So `nmap` (which is a program used to scan opened ports on an IP) reports that the ports `5432` is opened (here you'll have your other ports, if you chose to bind randomly or if you manually specified another port). Let's check if we can connect to it:
+So `nmap` (which is a program used to scan opened ports on an IP) reports that the port `5432` is opened (here you'll have your other ports, if you chose to bind randomly or if you manually specified another port). Let's check if we can connect to it:
 
 ```Bash
 $> netcat -v localhost 5432                                                                 ~
@@ -339,7 +366,7 @@ Nmap done: 1 IP address (1 host up) scanned in 0.12 seconds
 Depending on the services running on your host, you might have other ports opened, so more lines like this. But the important part for our example is the line `5432/tcp open postgresql`.
 
 So we have confirmed that, when using the `-p` option to bind a port with the format: `-p <host-port>:<container-port>`, this port was bound for every interface.  
-And this is not always what we want (think again about opening a connection to out postgresql database to debug ; or suppose your host has a network interface on which there is no external connectivity but is used for LAN connections with other hosts, etc.).
+And this is not always what we want (think again about opening a connection to our postgresql database to debug ; or suppose your host has a network interface on which there is no external connectivity but is used for LAN connections with other hosts, etc.).
 
 The docker developers have again thought about this and provided us with a way to specify the interface when we want to bind ports, the syntax is: `-p <ip-of-interface>:<host-port>:<container-port>`.
 
@@ -381,10 +408,13 @@ All 1000 scanned ports on 192.168.43.28 are closed
 Nmap done: 1 IP address (1 host up) scanned in 0.32 seconds
 ```
 
-Ah ah! Now the port `5432` is closed! Which is _exactly_ what we wanted. (Note: as before, depending on the services installed and running on your host, there might very well be other ports opened. Please understand that here we don't seek `"All 1000 scanned ports on 192.168.43.28 are closed"`, we simply seek that the line `5432/tcp open postgresql` be not here!)
+Ah ah! Now the port `5432` is closed! Which is _exactly_ what we wanted. (Note: as before, depending on the services installed and running on your host, there might very well be other ports opened. Please understand that here we don't seek `"All 1000 scanned ports on 192.168.43.28 are closed"`, we simply seek the line `5432/tcp open postgresql` not to be here!)
 
-So this is a _very_ handy tool, because now you can bind port on the desired interfaces and have a very fine granularity expose your services.  
+So this is a _very_ handy tool, because now you can bind ports on the desired interfaces and have a very fine granularity of the way you expose your services.  
 Note that if your host has more than 2 interfaces (let's say 5) and you want to bind the port on 3 of them but not the other two, you need to use the `-p` option three times: `-p <ip-1>:5432:5432 -p <ip-2>:5432:5432 -p <ip-3>:5555:5432`. Here I have bound the postgresql port `5432` to the same port number `5432` of the first two interfaces and on the port `5555` of the third interface.
+
+Note that if you want to have specific interface **and** random port mapping, then the syntaxt is as follow: `<interface-ip>::<port>`. Note the `::` in the middle (two `:`). This is basically the same as above, but with the "host" part omitted.  
+It looks weird, but that's the way to do it.
 
 Imagine the possibilities: you can bind some ports of your containers to the `tun0` interface of your host and this gives access to the ports only through the VPN tunnel, or you can bind ports to the internal Ethernet interface to allow fast communication intra-datacenter.
 
@@ -439,7 +469,7 @@ The only caveat though is that the two ranges must be equal: you can't have some
 #### Conclusion on Binding Ports
 
 That's it for use-case #1!  
-You know everything you need to know to establish communication between your host and your containers, network-wise. Just to sum up what we have just seen: we have understood that docker, being so good as isolation actually isolated the network stacks of our containers.
+You know everything you need to know to establish communication between your host and your containers, network-wise. Just to sum up what we have just seen: we have understood that docker, being so good at isolation actually isolated the network stacks of our containers.
 
 Meaning as far as the containers are concerned, they have their own network interface (usually `eth0`) which is bridged to one of the host's network interface (more on this later) to provide external connectivity ("access to Internet").
 
@@ -457,7 +487,7 @@ Note that you can containerize any service you want: it doesn't have to do with 
 - when you want to be able to contact a dockerized application, for debugging, logging, maintenance, etc. This usually happens with applications for which you have several instances. In this case, you will _usually_ use random port mapping (or if you have only a few of them, you can always specify the ports yourself, but past 4-5 instances it becomes cumbersome).  
 Usually with such a setup, you tend to use random port mapping but on a specified (often private, non-externally reachable) network interface (maybe a local network interface on your host, or a VPN tunnel?)
 
-We have just concluded big part and it was full of important information. Just so you know, I estimate that a solid 30% of the questions I answer on #docker are about Docker Networks, and a lot of them pertain to this topic of making a container communicate with the host. You _absolutely_ need to understand this.  
+We have just concluded a big part and it was full of important information. Just so you know, I estimate that a solid 30% of the questions I answer on #docker are about Docker Networks, and a lot of them pertain to this topic of making a container communicate with the host. You _absolutely_ need to understand this.  
 I hope I made this crystal-clear, and _please_, if _anything_ is still unclear, [shoot me an email](mailto:nschoe@protonmail.com). I will answer, **really**. It's paramount that you understand this.
 
 I suggest you take a break now, because you need to digest everything you've just read. And as usual, I _mean it_: in the next section, we will begin use-case #2, and when it comes to Docker Networks, people _always_, and I mean _always_ get it wrong. They always mix the two use-cases, so don't read the two cases one right after the other, because in your brain, you will join them and they will become this big mess of "Docker Network-ish". It's important that you understand there are two topics in Docker Networks.
@@ -475,7 +505,7 @@ I may have already said it earlier, but Docker Networks is, I think, the #1 feat
 
 From the first section, we have seen how to break the isolation between a host and a container. This is very interesting and important: we have seen that we can open ports between containers and (some of) the host's network interfaces.
 
-The _second_ use case, equally (if not more!) important (and cool!) is to make two containers (or more!) communicate together, _without the host's intervention_.  
+The _second_ use-case, which is equally (if not more!) important (and cool!) is to make two containers (or more!) communicate together, _without the host's intervention_.  
 I insist on this last part: too often, way too often I see people use the first method we saw (opening ports between containers and the host) to try and make two containers communicate together. Bah! After you read this I don't want you to even _think_ about this.  
 This is wrong at so many levels.
 
@@ -502,8 +532,11 @@ Besides, it was a bit more complex to add a third, and fourth and a fifth contai
 Considering the number or people I see sharing SQL user / passwords through environment variables, I say it's a _bit_ dangerous.
 
 Anyway, what's important to note, is that:
+
 1. `--link` is a thing of the past: I will show you an alternative; and once I have, there is no reason to ever use `--link` anymore.
 2. `--link` was a way to "link" / "connect" two containers, really. But it was inappropriate to build more complex stacks of more that 2 containers, which can happen quite quickly.
+
+Oh and also: `--link` was used when creating the container, with `docker run`, but once it was done, you could not "hot-disconnect" (or even "hot-connect") containers together. Which is pretty frustrating.
 
 `--link` was understandable in the beginning, when docker was still young and you needed an quick way to  connect containers #1 and #2.  
 But when you think just a tiny bit more about this, it's quite easy to think of a slightly more complex setup: suppose we have a container running a database, a container running a webserver, a container running a custom DNS server, a container running a cron job to periodically backup the database, a container running a level 2 database.  
@@ -521,10 +554,10 @@ The most important aspect (the one I really want to insist on), is that Docker N
 In the beginning, I found that it helps a lot to think about Docker Networks as WiFi networks (for the analogy, of course). It helps understand, for instance, that contrary to `--link`, there is no "precedence": container #1 is connected (or not) to the Docker Network, and this is also true for container #2.  
 But the order in which you connect them has absolutely no meaning: the same way that you don't case if your smartphone is connected to your home's WiFi network before or after your laptop. Really, this is it.
 
-Another important difference with `--link` is that since containers and Docker Networks are two completely separate entities, you don;t have that leaked environment variable anymore: again, think of WiFi networks. Just because you connected your laptop to your WiFi network doesn't mean every other laptop on the network can access all your data, and much less your environment variables.
+Another important difference with `--link` is that since containers and Docker Networks are two completely separate entities, you don't have those leaked environment variables anymore: again, think of WiFi networks. Just because you connected your laptop to your WiFi network doesn't mean every other laptop on the network can access all your data, and much less your environment variables.
 
 And just to make sure, I'll repeat it: connecting containers to a Docker Network breaks the isolation on _the networking stack_. It _just_ means that your containers will be able to see and talk to each other. But let's make it clear that no data is shared, no isolation is broken on the filesystem stack etc. You still have totally independent containers.  
-And this is the magic of Docker Networks: hey break the isolation _just enough_, exactly like we need it to.
+And this is the magic of Docker Networks: they break the isolation _just enough_, exactly like we need it to.
 
 Let's talk about Docker Networks more in depth!
 
@@ -589,8 +622,8 @@ $> docker network inspect MyFirstNetwork
 ]
 ```
 
-There are quite a lot of information here, and we will come back to it a bit later in this article, when I have introduced the important notions.  
-You can already recognized the `Name` of the network as you defined it on the `docker network create` command, the `Id`, which is the hash docker returned when you created the network. If ever that matters to you, you also have the date at which the network was created.
+There is quite a lot of information here, and we will come back to it a bit later in this article, when I have introduced the important notions.  
+You can already recognize the `Name` of the network as you defined it on the `docker network create` command, the `Id`, which is the hash docker returned when you created the network. If ever that matters to you, you also have the date at which the network was created.
 
 On simple thing we can talk about right now, is that, as you can see, by default, IPv6 is not enabled in docker networks. This means that ---once we learned how to do it--- when we have containers using this network, they can only talk with IPv4. To enable IPv6 in a network, you need to add the `--ipv6` option when running `docker network create`. Like this: `docker network create --ipv6 <network-name>`.
 
@@ -603,7 +636,7 @@ MyFirstNetwork
 
 When a removal is successful, docker prints back the name of the network you've just removed. You can confirm that the network doesn't exist anymore with `docker network ls`.
 
-Okay, so we've got the basic commands, now it's time to let the fun begins!
+Okay, so we've got the basic commands, now it's time to let the fun begin!
 
 #### The Principle Behind Docker Networks
 
@@ -616,13 +649,13 @@ I know you are probably eager to learn more about Docker Networks and start play
 
 So here, make sure you don't mix `connect` which is when a container connects to a Docker Network (so between a container and a Docker Network) and `link` which is the old-fashioned way, and which happened _between two containers_.
 
-When we `connect` a container to a Docker Network it becomes part of this Docker Network's network stack and the containers gains a new (virtual) network interface. As far as the container is concerned, everything happened as if you had installed a new network card and connected this new network card's Ethernet connector.
+When we `connect` a container to a Docker Network it becomes part of this Docker Network's network stack and the container gains a new (virtual) network interface. As far as the container is concerned, everything happened as if you had installed a new network card and connected this new network card's Ethernet connector.
 
-One container connected to a Docker Network in itself is not very interesting: there's not much added behavior. The fun begins when you connect _a second_ container to the Docker Network. And that is also where you begin to see the advantage of Docker Networks over the old-fashioned `--link`: it's _much more_ flexible: you have a Docker Network on a side, you have several containers on the other side, and you can dynamically connect and disconnect some (or all) of the containers to the Docker Network. And all of this, without affecting the others containers!
+One container connected to a Docker Network in itself is not very interesting: there's not much added behavior. The fun begins when you connect _a second_ container to the Docker Network. And that is also where you begin to see the advantage of Docker Networks over the old-fashioned `--link`: it's _much more_ flexible: you have a Docker Network on a side, you have several containers on the other side, and you can dynamically connect and disconnect some (or all) of the containers to the Docker Network. And all of this, without affecting the other containers!
 
 And what is even more powerful is that you can connect one container to several Docker Networks! The container will simply see a new (virtual) network interface. Exactly as the processes running on your computer would see a new network interface if you (physically) connected a new network card to your computer.
 
-#### Practise Time!
+#### Practice Time!
 That's a lot to digest, I know, so we're going to illustrate all of this.
 
 Let's start from scratch: no containers, no Docker Networks, nothing. Blank canvas.
@@ -650,15 +683,15 @@ Don't worry if you have others (in particular the `MyFirstNetwork` we created ea
 
 Now, we are going to create three containers that we will simply call `one`, `two` and `three` to keep things simple.
 
-```bash
-$> docker run --rm -itd --name one nginx sh
-2584a55374de2b52050ee553d27f2905369ca47b87fcff6681b22e664ba2635c
+```Bash
+$> docker run --rm -itd --name one net-test bash
+0be487e8b021b720dd657496c1ae92450c28de8ef9f1b16f06c72fe057ea567e
 
-$> docker run --rm -itd --name two nginx sh
-461e4f83431a043be8089e46c0db6854efcbc6e7a7e278392ad21b8590ac7c32
+$> docker run --rm -itd --name two net-test bash
+8827c17a87eef24cc165e79f50df696cabcb0ce19028c41848a428010934016a
 
-$> docker run --rm -itd --name three nginx sh
-2af69abd1dea705d51246b7c11f27877abec6cf35386bc0aa51491c38cb33009
+$> docker run --rm -itd --name three net-test bash
+11afdfe8e7aadb4b5acd13d434a2ca0ac118f603358e5e1aacb31ad6ed096b72
 ```
 
 (Make sure to keep the 3 terminals open, because we used option `--rm` to remove the containers once they exit).
@@ -680,9 +713,9 @@ So basically, we are in this situation:
 
 Remember what I told you about the story of container gaining a new (virtual) network interface? Well we're going to check this.
 
-Let's enter container `one` and check its network interfaces, as a reminder, you enter the container with `docker exec -it <container-name> bash` (or replace with `sh` is `bash` is not present).
+Let's enter container `one` and check its network interfaces, as a reminder, you enter the container with `docker exec -it <container-name> bash` (or replace with `sh` is `bash` if not present).
 
-Once inside, we will list network interfaces with `ip link show` (of the caveman can use `ifconfig` if they want ^^):
+Once inside, we will list network interfaces with `ip link show` (or the caveman can use `ifconfig` if they want ^^):
 
 ```bash
 $> ip link show
@@ -692,12 +725,12 @@ $> ip link show
     link/ether 02:42:ac:11:00:02 brd ff:ff:ff:ff:ff:ff
 ```
 
-I will leave you verify that the same command run in containers `two` and `three` will yield similar results. So what we see here is that we have two network interfaces: `lo` which corresponds to the local loop (localhost) and `eth0`, which... you should consider as the "default network interface" for now.  
+I will let you verify that the same command run in containers `two` and `three` will yield similar results. So what we see here is that we have two network interfaces: `lo` which corresponds to the local loop (localhost) and `eth0`, which... you should consider as the "default network interface" for now.  
 I will explain the truth about it a bit later in the article, for the moment, just admit that the container has a default network interface.
 
 Okay, so you can exit this terminal (again: make sure to keep the first three terminals opened, not to terminate the containers).
 
-Right now, we have one Docker Networks (`CustomNetwork`) and three containers, totally unrelated. It's time to unleash the power of Docker Networks!  
+Right now, we have one Docker Network (`CustomNetwork`) and three containers, totally unrelated. It's time to unleash the power of Docker Networks!  
 We are now going to `connect` container `one` to the `Custom Network`.
 
 This is done with the `docker network connect` subcommand. This subcommand takes the name of the network and the name of the container to connect.  
@@ -714,7 +747,7 @@ Tadaaaaaa!
 
 ...
 
-Okay there was neither smoke nor flashy lights, but we have just done something interesting. Granted, docker doesn't provide you with a lot of input, but `docker network` commands are part of this family of "shy" commands: when they don't tell you anything, it means it went all right. They start talking where some bad things happened.
+Okay there was neither smoke nor flashy lights, but we have just done something interesting. Granted, docker doesn't provide you with a lot of output, but `docker network` commands are part of this family of "shy" commands: when they don't tell you anything, it means it went all right. They start talking where some bad things happened.
 
 So we still need some confirmation that what we've just done was actually useful.
 
@@ -743,7 +776,7 @@ $> docker network inspect CustomNetwork
         "Internal": false,
         "Attachable": false,
         "Containers": {
-            "2deaab87b3f99c40c245c8e77480656d93cd14c55fa34229e6c062fa74d8e035": {
+            "0be487e8b021b720dd657496c1ae92450c28de8ef9f1b16f06c72fe057ea567e": {
                 "Name": "one",
                 "EndpointID": "c298e545a4b68da5771be1504b3d0a5f2435afda425b3be3d47d0ff7d8f6582a",
                 "MacAddress": "02:42:ac:13:00:02",
@@ -761,7 +794,7 @@ The interesting part is the `Containers`:
 
 ```bash
 "Containers": {
-            "2deaab87b3f99c40c245c8e77480656d93cd14c55fa34229e6c062fa74d8e035": {
+            "0be487e8b021b720dd657496c1ae92450c28de8ef9f1b16f06c72fe057ea567e": {
                 "Name": "one",
                 "EndpointID": "c298e545a4b68da5771be1504b3d0a5f2435afda425b3be3d47d0ff7d8f6582a",
                 "MacAddress": "02:42:ac:13:00:02",
@@ -771,7 +804,7 @@ The interesting part is the `Containers`:
         }
 ```
 
-This section list the container that are currently connected to the Docker Network we introspected, and we see that a container with `"Name": "one"` is connected, so that's a first indication that it worked!
+This section lists the container that are currently connected to the Docker Network we introspected, and we see that a container with `"Name": "one"` is connected, so that's a first indication that it worked!
 
 We can also re-enter the container, and check its network interfaces: it should have gained a new one, as we mentionned before. Let's check this now:
 
@@ -793,7 +826,7 @@ But `docker exec` is really meant to execute whatever command you want, so this 
 So really, this should not confuse you; from now on, I'm going to use either interchangeably!
 2. back to our Docker Network topic: we can see here that we now have three network interfaces: `lo` and `eth0` which we already had, and the new `eth1`. As expected, the container now sees a new network interface, because as far as it is concerned, we have just added a new network interface.
 
-At a _last_ confirmation (actually I'm doing all of these steps to give you _closure_: by showing you all the components on what is involved, I am trying to show you that everything is logic and there is absolutely no "black, magic box"), we are going to get the container's IP address.
+As a _last_ confirmation (actually I'm doing all of these steps to give you _closure_: by showing you all the components on what is involved, I am trying to show you that everything is logic and there is absolutely no "black, magic box"), we are going to get the container's IP address.
 
 What we have just done is connect our `one` container inside a Docker Network: `CustomNetwork`. Since it joined a network, it must have an IP address inside this network. I'm going to show you two ways to get it, which should confirm what is going one.
 
@@ -856,7 +889,7 @@ Annnnnd the loop is closed: we can see that the IP address, as seem from inside 
 
 ##### Now What?
 
-Yeah, granted, we've seen quite a log, but it still lack the magical effect, with smoke, pyrotechnic effects and all that.  
+Yeah, granted, we've seen quite a lot, but it still lack the magical effect, with smoke, pyrotechnic effects and all that.  
 We'll fix this now.
 
 Why isn't it all magical right now? It's because what we have done, albeit cool, is rather limited: we have _just_ connected a container (`one`) to a Docker Network (`CustomNetwork`).
@@ -879,20 +912,20 @@ So what changed? We're now in this situation:
 
 ![**Fig 4**: Container "two" joined "one" in the Docker Network. "Three" is still outside.](/images/04-one-n-two-in-network.svg "'Two' joined 'one' inside the network")
 
-We can make a quick check by looking at the `Containers`'s section of the `docker networ inspect` command:
+We can make a quick check by looking at the `Containers`'s section of the `docker network inspect` command:
 
 ```bash
 $> docker network inspect CustomNetwork
 [...]
 "Containers": {
-            "2deaab87b3f99c40c245c8e77480656d93cd14c55fa34229e6c062fa74d8e035": {
+            "0be487e8b021b720dd657496c1ae92450c28de8ef9f1b16f06c72fe057ea567e": {
                 "Name": "one",
                 "EndpointID": "b090281848529d2d472f5e73350edf713d02e0480d33f006d21806ce0dbba8f3",
                 "MacAddress": "02:42:ac:13:00:02",
                 "IPv4Address": "172.19.0.2/16",
                 "IPv6Address": ""
             },
-            "77e3e44ee3cc8273e9ff30300aedc46c4dfec3e167f3cd34ea4ae81e6d56fa51": {
+            "8827c17a87eef24cc165e79f50df696cabcb0ce19028c41848a428010934016a": {
                 "Name": "two",
                 "EndpointID": "0bca67b6796de28a5666beb647e199b81b88ecbf02f6826b5f58ba99662f0a9a",
                 "MacAddress": "02:42:ac:13:00:03",
@@ -925,16 +958,35 @@ round-trip min/avg/max/stddev = 0.054/0.057/0.063/0.000 ms
 
 Hey! Did you see that?! We have made our first contact between two containers!
 
-Let's confirm the awesomeness of this by _disconnecting_ container `two` from the Docker Network: `docker network disconnect CustomNetwork two`. Ho by the way it shows you the command used to disconnect a container from a Docker Network (as usual, the order is first the network name (or id) and then the container's).
+Let's double-confirm that they can actually communicate, we will use `netcat` to emulate a client / server between the two.
 
-A quick confirmation with `docker networ inspect CustomNetwork` confirms that `two` is not part of the Docker Network anymore:
+Let's create the server in `two`:
+
+```Bash
+$> docker exec -it two bash
+root@8827c17a87ee:/# netcat -l -p 1089
+```
+
+Let's use the client in `one` and try to connect to `two`'s server:
+
+```Bash
+$> docker exec -it one bash
+root@0be487e8b021:/# netcat -v 172.19.0.3 1089
+two.CustomNetwork [172.19.0.3] 1089 (?) open
+```
+
+So the connection is possible and established ("open"), and you can try and write anything then press `<Enter>` ; it will show up on the server, in `two`. So communication is established!
+
+Let's confirm the awesomeness of this by _disconnecting_ container `two` from the Docker Network: `docker network disconnect CustomNetwork two`. Oh and by the way it shows you the command used to disconnect a container from a Docker Network (as usual, the order is first the network name (or id) and then the container's).
+
+A quick look at `docker network inspect CustomNetwork` confirms that `two` is not part of the Docker Network anymore:
 
 ```bash
 $> docker network inspect CustomNetwork
 [...]
 
 "Containers": {
-            "2deaab87b3f99c40c245c8e77480656d93cd14c55fa34229e6c062fa74d8e035": {
+            "0be487e8b021b720dd657496c1ae92450c28de8ef9f1b16f06c72fe057ea567e": {
                 "Name": "one",
                 "EndpointID": "476b9ea0975e728b862874457bd42f2b702687f8387c9eacdb0c73ea4e3b79ce",
                 "MacAddress": "02:42:ac:13:00:02",
@@ -967,13 +1019,14 @@ We have to take a tiny break here and look back at what we have accomplished. Be
 - Then we connected containers `one` and `two` inside this Docker Network _without changing **anything** else_.
 - And thanks to this, we were able to make `one` and `two` communicate with each other, while still being isolated from the rest of the world (noticed how `three` was not involved here?)
 
-This **is** powerful: with that, imagine what you can do: you can link containers running your webapp with a container running `nginx`, with a container running `postgresql`, with a container running `redis`, etc.
+This **is** powerful: with that, imagine what you can do: you can connect containers running your webapp with a container running `nginx`, with a container running `postgresql`, with a container running `redis`, etc.
 
 In other words, we have opened one of the last doors to building complex stacks. (In these articles, until I mention otherwise, by "stack" I mean a group of container, possibly interacting with each others through Docker Network(s), with some Docker Volumes).
 
-I'd like you to take a small break (not one of those long break, where I show a cup of coffee icon, just a step back to appreciate the complexity of what we are doing) and enjoy (also make _sure_ you understood what we have just done).
+I'd like you to take a small break (not one of those long break, where I show a cup of coffee icon, just a step back to appreciate the complexity of what we are doing) and enjoy (also make _sure_ you understood what we have just done because we are going to build upon this).
 
 This _may_ look simple to you right now, but it's:
+
 1. because I (hopefully) explain it clearly (at least that's what I'm trying to do)
 2. because the Docker developers made a wonderful job of giving up a very nice API, simple to use ; they abstracted away all the complex notions, etc.
 
@@ -981,28 +1034,28 @@ This _may_ look simple to you right now, but it's:
 Now that you have appreciated this, let's see how modular, quick and easy this setup is. Remember our friend `three` which was left alone up to now?  
 Well it's time to connect it to our network and see that Docker Networks is **much** more powerful than the old & deprecated `--link` feature (for those who used it ; for the others, forget this last sentence).
 
-Let's connect `two` and three in the Docker Network: `docker network connect CustomNetwork three` and `docker network connect CustomNetwork two`.
+Let's connect `two` and `three` in the Docker Network: `docker network connect CustomNetwork three` and `docker network connect CustomNetwork two`.
 
 A quick check:
 
 ```bash
 $> docker network inspect CustomNetwork
 "Containers": {
-            "2deaab87b3f99c40c245c8e77480656d93cd14c55fa34229e6c062fa74d8e035": {
+            "0be487e8b021b720dd657496c1ae92450c28de8ef9f1b16f06c72fe057ea567e": {
                 "Name": "one",
                 "EndpointID": "476b9ea0975e728b862874457bd42f2b702687f8387c9eacdb0c73ea4e3b79ce",
                 "MacAddress": "02:42:ac:13:00:02",
                 "IPv4Address": "172.19.0.2/16",
                 "IPv6Address": ""
             },
-            "51e27a7cc7ba107183a4c42ba8d9d11f92f554c6e0314e2ad165b77cc51be507": {
+            "11afdfe8e7aadb4b5acd13d434a2ca0ac118f603358e5e1aacb31ad6ed096b72": {
                 "Name": "three",
                 "EndpointID": "8b3c8caf6a421b3512fc1ad89a4629171a5fd093a2724004bee345084e26e5a8",
                 "MacAddress": "02:42:ac:13:00:03",
                 "IPv4Address": "172.19.0.3/16",
                 "IPv6Address": ""
             },
-            "77e3e44ee3cc8273e9ff30300aedc46c4dfec3e167f3cd34ea4ae81e6d56fa51": {
+            "8827c17a87eef24cc165e79f50df696cabcb0ce19028c41848a428010934016a": {
                 "Name": "two",
                 "EndpointID": "ee9ee79d8c1a96e359700252efb66f89ebff3faf5f71afa4becee69e4f8d0254",
                 "MacAddress": "02:42:ac:13:00:04",
@@ -1012,7 +1065,8 @@ $> docker network inspect CustomNetwork
         }
 ```
 
-So we do have all three containers in our Docker Network. And you can enter any of them and ping any of the other's IP address and that will work. Disconnect any of the container from the network, and it will simply xease to be reachable by the others.
+So we do have all three containers in our Docker Network. And you can enter any of them and ping any of the other's IP address and that will work. Similarly you can use `netcat` to create a server on any of these containers and use `netcat` as a client from any other container to contact to it and check that data exchange is really possible.  
+Disconnect any of the container from the network, and it will simply cease to be reachable by the others.
 
 Isn't that all wondeful?
 
@@ -1023,12 +1077,12 @@ Yes I can see you in the back... what's the problem?
 
 ...
 
-You've noticed that container `two` has now IP address `172.19.0.4` and not `172.19.0.3` like it has before we disconnected / reconnected it?  
+You've noticed that container `two` has now IP address `172.19.0.4` and not `172.19.0.3` like it had before we disconnected / reconnected it?  
 So what, you want a medal?
 
 Just kidding! Very nice catch actually.
 
-As you may have guessed, Docker Networks tend to address IP addresses in an increasing number, in the order containers are connected. This is a trend, but _please_ you should **not** rely on this (again: it's not documented per see).
+As you may have guessed, Docker Networks tend to address IP addresses in an increasing number, in the order containers are connected. This is a trend, but _please_ you should **not** rely on this because this is not documented anywhere, so the docker dev teams are free to change this without prior notice. Actually relying on this for you stack is a _guarantee_ for trouble.
 
 While it can be fine for "static" configurations, it might become a very big problems for applications that are more dynamic: what if containers can be created on the fly and join the Docker Network, then maybe become disconnected, etc.?
 
@@ -1076,31 +1130,51 @@ PING three (172.19.0.3): 56 data bytes
 round-trip min/avg/max/stddev = 0.056/0.064/0.085/0.000 ms
 ```
 
+For consistency's sake, we will create a server with `netcat` on container `three` and try to connect from `two`:
+
+```Bash
+$> docker exec -it three bash
+root@11afdfe8e7aa:/# netcat -l -p 2000
+```
+
+Yes I changed the port so that you can see for yourself that everything works for real.
+
+```Bash
+$> docker exec -it two bash
+17a87ee:/# netcat -v three 2000
+three.CustomNetwork three [172.18.0.3] 2000 (?) open
+```
+
+And then I'll let you write anything in the client and press `<Enter>` and see that it gets written back on the server.
+
+Notice here the big difference: in the client, we did not use `three`'s IP address, but `three`'s name: `three`.  
+In this case, we don't even know (care?) what `three`'s IP is: Docker resolves it for us!
+
 Ah ah! Seriously, look me into the eyes and tell me: how awesome is that? As you can see here, when we pinged `one`, it resolved to `172.19.0.2`, and when we pinged `three`, it resolved to `172.19.0.3`.
 
 Let's make sure it works: disconnect `one` and `three`: `docker network disconnect CustomNetwork one && docker network disconnect CustomNetwork three` and reconnect them, in the other reverse order (to change their IP address); `docker network connect CustomNetwork three && docker network connect CustomNetwork one`.
 
-Let's check that hteir IP addresses have been changed:
+Let's check that their IP addresses have been changed:
 
 ```bash
 $> docker nework inspect CustomNetwork
 [...]
 "Containers": {
-            "2deaab87b3f99c40c245c8e77480656d93cd14c55fa34229e6c062fa74d8e035": {
+            "0be487e8b021b720dd657496c1ae92450c28de8ef9f1b16f06c72fe057ea567e": {
                 "Name": "one",
                 "EndpointID": "da6c82447d34726b9e08977ea13a31411aadb238a08cd7b0fec7b293c9007c02",
                 "MacAddress": "02:42:ac:13:00:03",
                 "IPv4Address": "172.19.0.3/16",
                 "IPv6Address": ""
             },
-            "51e27a7cc7ba107183a4c42ba8d9d11f92f554c6e0314e2ad165b77cc51be507": {
+            "11afdfe8e7aadb4b5acd13d434a2ca0ac118f603358e5e1aacb31ad6ed096b72": {
                 "Name": "three",
                 "EndpointID": "95c3acb0ebecb52de368bea7ecb0a57f45ed0ec02606f00a7629765671fff77e",
                 "MacAddress": "02:42:ac:13:00:02",
                 "IPv4Address": "172.19.0.2/16",
                 "IPv6Address": ""
             },
-            "77e3e44ee3cc8273e9ff30300aedc46c4dfec3e167f3cd34ea4ae81e6d56fa51": {
+            "8827c17a87eef24cc165e79f50df696cabcb0ce19028c41848a428010934016a": {
                 "Name": "two",
                 "EndpointID": "ee9ee79d8c1a96e359700252efb66f89ebff3faf5f71afa4becee69e4f8d0254",
                 "MacAddress": "02:42:ac:13:00:04",
@@ -1146,7 +1220,7 @@ root@77e3e44ee3cc:/# ping -c 4 three
 ping: unknown host
 ```
 
-As soon as the container disconnects from the Docker Network, it is not reachable anymore.
+As soon as the container disconnects from the Docker Network, it is not reachable anymore. No need to realod any configuration or anything: the container left the network, it is not there anymore. Period. Awesome. Confetti.
 
 ##### A Quick Gotcha
 
@@ -1156,7 +1230,7 @@ This is why we can do `ping three` and it automatically resolves to the correct 
 This is all good and all, but just know that it only works with _explicitly-named_ containers. In other words, it doesn't work with containers that are named automatically by docker, let's see this in effect:
 
 ```bash
-$> docker run --rm -itd nginx bash
+$> docker run --rm -itd net-test bash
 
 $> docker ps --format "{{.Names}}"
 peaceful_lovelace
@@ -1182,6 +1256,12 @@ On ma machine it takes about 30 seconds, but it eventually times out.
 
 All of this to say that this is weird, but it's the rule (at least, for now): this automatic container name resolution only works with explicitly-named containers. Just remember it before thinking your Docker Networks has is broken.
 
+There is one last workaround to this rule: `--network-alias`.  
+This is an option to `docker run` which, as its name implies, gives a container an alias, for network communication. What this means is that whatever the name of the container, it can _also_ be resolved on the network by one of its network aliases.
+
+So if you create a container without the `--name` but with a `--network-alias my-alias` then any container on the network can reach this one by using `my-alias`. It acts as the name of the container.
+
+This is useful if, for instance, you want a container to be reachable from several names. You can have a container that is named `test-postgres-v4` so it is reachable in the Docker Network with `test-postgres-v4`. But you can also give it `--network-alias db` and it will be reachable with `db`. This is especially useful if you are testing a new configuration (in a new container): simply give your new container an network alias that corresponds to the name the other containers used to contact the old (legacy) container, and it will be transparent.
 
 #### Time For a Recap!
 
@@ -1198,18 +1278,18 @@ One obvious way to "solve" this problem would have been to run all the applicati
 
 We briefly talked about a legacy way, `--link` which is a rough way to directly connect two containers. It was the only solution at some point in time, but now it should be banned.
 
-Then we saw _the_ solution: `Docker Networks`. They are as easy to create as containers (`docker network create` and `docker network rm`) and they provide networking features for our containers. A Docker Network is totally separate from a container, which means that you can "hot-connect" an existing, running container inside a Docker Network (_i.e._ connect the container without stoppping or destroying it).  
+Then we saw _the_ solution: `Docker Networks`. They are as easy to create as containers (`docker network create` and `docker network rm`) and they provide networking features for our containers. A Docker Network is totally separate entity from a container, which means that you can "hot-connect" an existing, running container inside a Docker Network (_i.e._ connect the container without stoppping or destroying it).  
 When a container gets connected to a Docker Network, it gains a new network interface, because as far as this container is concerned, it _as if_ its host system just had a new network interface installed and joined a new local network (like a LAN).  
-The container thus gains a new IP address (its IP address inside the Docker Network) that can be used to communicate with it, by the others containers in the same Docker Network.
+The container thus gains a new IP address (its IP address inside the Docker Network) that can be used to communicate with it, by the other containers in the same Docker Network.
 
 The very handy thing about Docker Networks is that they are a separate entity (from the containers). It's something that you create an dhandle separately. And you can, at some point (_i.e._ not necessarily at the time you run your container) you can decide to connect your container to a Docker Network (it then becomes reachable by the other containers inside this Docker Network), and whenever you want, you can disconnect it from the Docker Network (thus becoming unreachable).
 
-A nice little feature is the embedded DNS server that allows containers to talk to each other through their container's name instead of going through the process of discovering the target container's IP address. Remember, though, that it works only with explicitly-named containers.
+A nice little feature is the embedded DNS server that allows containers to talk to each other through their container's name (and/or their network aliases) instead of going through the process of discovering the target container's IP address. Remember, though, that it works only with explicitly-named containers (or containers that have network alias(es)).
 
 ### Slightly More Advanced Use-Cases
 
 #### A Nice Shortcut
-Now that all of this is slowly sinking in, let me show you one small option that should make you save a little time. Until now we have instantiated a container with `docker run`, we usually gave it a name with the `--name` option, and _then_ we connected the container to our Docker Network with `docker network connect <network> <container>`.
+Now that all of this is slowly sinking in, let me show you one small option that should save you some time. Until now we have instantiated a container with `docker run`, we usually gave it a name with the `--name` option, and _then_ we connected the container to our Docker Network with `docker network connect <network> <container>`.
 
 This is fine and works. But just for the sake of mentionning it, know that it is possible to _directly_ connect the container to a Docker Network thanks to the `docker run` command. This way you can do it all in one command.  
 This doesn't change anything: the behavior is exactly the same, and if you find this confusing, feel free to forget about this. But if you're interested, the option to add is `--net`.
@@ -1225,10 +1305,11 @@ I don't know of a better way to tell you, so I'll just blurt it out:
 
 > You can connect a container to **several** Docker Networks **at the same time**!
 
-Yes, you read that correctly. Remember how we said that when we connect a container to Docker Network, it gains a new network interface, because for the processes running inside the container, it is as if the machine had a new network card and just joined a new LAN network? Well what prevents you from installing _a second_ network card and connect to _another_ LAN then?  
+Yes, you read that correctly. Remember how we said that when we connect a container to a Docker Network, it gains a new network interface, because for the processes running inside the container, it is as if the machine had a new network card and just joined a new LAN network? Well what prevents you from installing _a second_ network card and connect to _another_ LAN then?  
 Nothing. And this is also possible with Docker.
 
 Until now, we had situations like this:
+
 ![**Fig 5**: Simple configuration with several containers in the same Docker Network](/images/05-simple-configuration.svg "Simple configuration: containers in one Docker Network")
 
 Now we will do something like this:
@@ -1250,13 +1331,13 @@ $> docker network create Network2
 And let's now create three containers:
 
 ```bash
-$> docker run -itd --name ContainerA nginx
+$> docker run -itd --name ContainerA net-test
 0407e1bad71112464bfc1d3cafa284549c2504400482a5103998352b5eb6aa07
 
-$> docker run -itd --name ContainerB nginx
+$> docker run -itd --name ContainerB net-test
 c12bfd2e1842404f1c66b031b8d79225375740aa6daed0123287c5f355804417
 
-$> docker run -itd --name ContainerB nginx
+$> docker run -itd --name ContainerB net-test
 f18c6c868e9a3b283b59d0b41df8696eadf9bebfd3da405117bd4313b48ccf67
 ```
 
@@ -1296,7 +1377,7 @@ $> docker network inspect Network1
 And they can reach each other:
 
 ```bash
-$> docker exec ContainerA ping -c 3 ContainerC                                                    ~
+$> docker exec ContainerA ping -c 3 ContainerC
 PING ContainerC (172.20.0.3): 56 data bytes
 64 bytes from 172.20.0.3: icmp_seq=0 ttl=64 time=0.073 ms
 64 bytes from 172.20.0.3: icmp_seq=1 ttl=64 time=0.058 ms
@@ -1306,7 +1387,7 @@ PING ContainerC (172.20.0.3): 56 data bytes
 round-trip min/avg/max/stddev = 0.058/0.063/0.073/0.000 ms
 ```
 
-(Here, instead of first "entering" `ContainerA` and then run a `ping` command to ping `ContainerC`, I use `docker exec` to execute a command inside the container, this command being `ping -c 3 ContainerC`. This saves us a roundtrip ot "entering the container", making our call, exiting the container. But it's equivalent.)
+(Here, instead of first "entering" `ContainerA` and then run a `ping` command to ping `ContainerC`, I use `docker exec` to execute a command inside the container, this command being `ping -c 3 ContainerC`. This saves us a roundtrip of "entering the container", making our call, exiting the container. But it's equivalent. Also, I will let you test that it still works with `netcat`.)
 
 Just to be extra sure, let's check that `ContainerC` is not in `Network2`:
 
@@ -1345,7 +1426,7 @@ $> docker exec ContainerC ip addr show
        valid_lft forever preferred_lft forever
 ```
 
-So we see the usual `lo` loopback interface and the usual `eth0` interface that I briefly mentionned (remember: for now consider that when you create a container, it starts with two network interfaces: `lo` and `eth0`).  
+So we see the usual `lo` loopback interface and the usual `eth0` interface that I briefly mentionned (remember: for now consider that when you create a container, it starts with two network interfaces: `lo` and `eth0`; I promise that the real explanation is coming soon).  
 And we can see `eth1` which corresponds to the network interface this container has in the Docker Network `Network1` (check the IP addresses, you'll see they match!)
 
 Okay, perfect! It's time to connect `ContainerC` to `Network2` now: `docker network connect Network2 ContainerC`.
@@ -1471,7 +1552,7 @@ Let's make a few experiments before I explain, so that you can see for yourself.
 Let's create a container, as usual and notice this phenomenon:
 
 ```bash
-$> docker run --rm -itd --name C1 nginx bash
+$> docker run --rm -itd --name C1 net-test bash
 220c4e21c10e4a0f6b90e0015fc5f40f221437cd0675164eeb0a0e271e4e6c29
 
 $> docker exec C1 ip addr show                                                                    ~
@@ -1505,7 +1586,7 @@ Okay. Makes sense. If we disconnect it from the Docker Network, it will lose its
 Let's do this again (keep this container alive for now).
 
 ```bash
-docker run --rm -itd --name C2 nginx bash
+docker run --rm -itd --name C2 net-test bash
 134357a53de8a5778a3a6a405321156e345563379186c638a8373bb477f52e58
 
 $> docker exec C1 ip addr show
@@ -1524,7 +1605,7 @@ I'll let you search for a couple of seconds.
 Nothing? Let's make one more test and see if it ticks:
 
 ```bash
-$> docker run --rm -itd --name C3 --net CustomNetwork nginx bash                                  ~
+$> docker run --rm -itd --name C3 --net CustomNetwork net-test bash                                  ~
 0c9f663520a53915a1e1c72dc6f3cb28cff654d0e8d266756b5419e04349020c
 
 $> docker exec C3 ip addr show
@@ -1558,7 +1639,7 @@ NETWORK ID          NAME                DRIVER              SCOPE
 70ff2194d229        MyFirstNetwork      bridge              local
 83b7a5902813        Network1            bridge              local
 721f118ce184        Network2            bridge              local
-e68176304a37        bridge              bridge              local
+e68176304a37        bridge              bridge              local   # <---- that's the one!
 2683c3824f8f        host                host                local
 a84e731c4387        none                null                local
 ```
@@ -1620,25 +1701,27 @@ That's all. Make sure to always use custom Docker Networks when doing serious wo
 
 #### Can You Tell us More About the Other Networks?
 
-Oh you are curious! That's good, I love curious people.  
+Oh boy you are curious!  
+That's good, I love curious people (maybe we can meet...? No? ... Okay).
+
 Back when I introduced the Docker Networks, when we first ran `docker network ls`, we saw three default Docker Networks:
 
 - `bridge` which we just explained (you know the default network to which all containers are connected by default, unless you specify a `--net` parameters)
 - `host`
 - `none`
 
-Okay, so `none` is the easiest to understand: basically (as the name slightly implies!) it is used when you want to create a container but do not want to connect it to any network at all. In particular, creating a containe with `--net none` will prevent this container to be automatically connected to the default `bridge` network.  
+Okay, so `none` is the easiest to understand: basically (as the name slightly implies!) it is used when you want to create a container but do not want to connect it to any network at all. In particular, creating a container with `--net none` will prevent this container to be automatically connected to the default `bridge` network.  
 But be warned: `none` is also meant to _enforce_ a container to have no connectivity, at all. So for as long as your container is part of the `none` network, it **cannot** be connected to any other Docker Network. You first need to `disconnect` it from the `none` network to connect it to another Docker Network.  
 Be sure to remember this.
 
-`host` is different and a little special. First of all, you cannnot connect _or_ disconnect a container to / from the `host` network. The only thing you can do is create a container with the `--net host` option. This way it will be automatically connected to the `host` network when it is created, and that's all.  
+`host` is different and a little special. First of all, you cannot connect _or_ disconnect a container to / from the `host` network. The only thing you can do is create a container with the `--net host` option. This way it will be automatically connected to the `host` network when it is created, and that's all.  
 You cannot disconnected it later (you have to plainly destroy the container) and if you did not create the container with `--net host`, it not possible to add it later.
 
 So what does it do then?
 
 Well, when you make your container part of the `host` network, it means the container becomes part of the host's network stack. It means it will share all of the host's network interfaces. In other words, using `--net host` means you are **not** isolating your container (on the network side): it is a "normal" process on your host (from a network point of view), so it can see and access the host's network interfaces.
 
-To be honest, if you end up using `--net host` for another reason that testing & curiosity, it's either because you're takign a nasty, dirty shortcut and you don't understand what you do, **or** you are really advanced and you know perfectly what you are doing.  
+To be honest, if you end up using `--net host` for another reason that testing & curiosity, it's either because you're taking a nasty, dirty shortcut and you don't understand what you do, **or** you are really advanced and you know perfectly what you are doing.  
 Personally, I have never had to use `--net host` for real, there is (almost) always a better, cleaner solution.  
 So I included the explanation for consistency's sake, but I really discourage you to use `--net host`.
 
@@ -1647,11 +1730,11 @@ So I included the explanation for consistency's sake, but I really discourage yo
 This was not long, so let's make this recap short!
 
 We have finally learned about the three default networks that come "pre-installed" when you install Docker. They are: `host`, `none`, `bridge`.  
-Note that you cannot remove these three networks: if you try `docker network rm` on any of them ~~the worlds falls apart~~ you'll get insulted by Docker.
+Note that you cannot remove these three networks: if you try `docker network rm` on any of them ~~the world falls apart~~ you'll get insulted by Docker.
 
 The roles of these networks are:
 
-- `bridge`: this is the default bridge network to which all containers are connected when you create them without a `--net` option. Note that automatic name resolution (psuedo embedded DNS server) is **not** working for this network.  Do not use on production.
+- `bridge`: this is the default bridge network to which all containers are connected when you create them without a `--net` option. Note that automatic name resolution (pseudo embedded DNS server) is **not** working for this network.  Do not use on production.
 - `none`: used to prevent a container to have any sort of network connection
 - `host`: prevent isolation of a container on the network side: it will share the host's network stack unaltered.
 
@@ -1661,22 +1744,22 @@ So that was _quite_ a part, wasn't it? We have learned one of the most powerful 
 If you recall what we had before this part, we could create separate and individual containers. We learned how to create good and well-structured Dockerfiles to eventually be built and create images.  
 We learned how to make all of our containers totally ephemeral, _i.e._ we made it so that out containers could be stopped, restarted, destroyed and recreated at any time, without problems thanks to making important data persistent with Docker Volumes.
 
-This was all good, but had a feeling of "incompleteness": it allowed only "sigle-container" applications, or, _worse_ it made you cram all your application processes inside one, monolithic container. **This is bad**. You should not do it anymore. For real.
+This was all good, but had a feeling of "incompleteness": it allowed only "single-container" applications, or, _worse_ it made you cram all your application processes inside one, monolithic container. **This is bad**. You should not do it anymore. For real (otherwise you'll go to the same place in hell as those that keep using `--link`!).
 
 Now, thanks to Docker Networks, we learned how to break the isolation **in a controlled way** between several containers: essentially, we learned how to make them communicate. And I hope you can see how many opportunities this now creates!
 
-You can totally think about containerizing every part of your application stack: separate the database from the web server, from the intermediate redis cache, from a custom-implemented CND too of you wish!
+You can totally think about containerizing every part of your application stack: separate the database from the web server, from the intermediate redis cache, from a custom-implemented CDN too of your wish!
 
 But believe me, this is only half the fun (actually, this is even one _third_) of the fun!
 
 What do I mean by that?
 
-I mean that, network-related, we still have two **awesome** features to discover in Docker: overlay networks and the Swarm Mode. You might have heard these names before, you might even have tried to use them a little. If yes, then you should be excited, because we're going to talk about these. If no, well.. you _should_ be excited, because it's amazing.
+I mean that, network-related, we still have two **awesome** features to discover in Docker: overlay networks and the Swarm Mode. You might have heard these names before, you might even have tried to use them a little. If yes, then you should be excited, because we're going to talk about these. If no, well.. you _should_ be excited, because it's amazing (and we're _still_ going to talk about them!).
 
 The second part of this Part V article will be about overlay networks, because they are very very close to the bridge-based Docker Networks we have been studying up to now. As for the Swarm Mode, since this is a huge topic in itself, this is going to be covered in another Part.
 
-So now we are going to be talking about overlay networks, but before that, you _really_ need to take a coffee break. And as usual, I mean it: a lots of the features we are going to be talking about have the same name, and deal wit hthe same concept. This is the _perfect_ way to get things mixed up. You think you understand Docker Networks, you think you mastered them bcause you've just read about them, and you end up mixing everything.  
-So as usualy, here is the cup-of-coffee image, take a break, the article will still be there when you return!
+So now we are going to be talking about overlay networks, but before that, you _really_ need to take a coffee break. And as usual, I mean it: a lot of the features we are going to be talking about have the same name, and deal with the same concept. This is the _perfect_ way to get things mixed up. You think you understand Docker Networks, you think you mastered them bcause you've just read about them, and you end up mixing everything.  
+So as usual, here is the cup-of-coffee image, take a break, the article will still be there when you return!
 
 ![](/images/coffee_break.png "Coffee time!")
 
@@ -1690,7 +1773,7 @@ Excited? Let's read on, then!
 
 ### Foreword
 
-Just before I say anything else, just let me make something clear. If you look at an overview of this article, you will see that it is quite long, and the part about overlay networks comes at the end, and it relatively short, compared to the rest of the article. So I would understand if you went and think this is just a detail, it's trivial or not that important. **You'd be wrong**.  
+Just before I say anything else, just let me make something clear. If you look at an overview of this article, you will see that it is quite long, and the part about overlay networks comes at the end, and is relatively short, compared to the rest of the article. So I would understand if you went and think this is just a detail, it's trivial or not that important. **You'd be wrong**.  
 Overlay networks are even _more powerful_ that bridge-based networks (the Docker Networks we have been talking about since the beginning of this article). But the Docker developers made their homework and made the API and most of the concepts work transparently. In orther words, there is a reason I'm talking about overlay networks _after_ bridge-based networks: it's because it re-uses all the notions we saw there.  
 So really, don't think overlay networks are trivial: they simply have a lots in common with bridge-based networks, they simply have additional features, so you need to read the whole Part above to understand overlay networks.
 
@@ -1701,13 +1784,13 @@ That being said, let's proceed!
 So with everything we have seen so far, we can have complex stacks: we can design our own images in Dockerfiles, perfectly suited to our needs, we can make data persistent, and thanks to Docker Networks, we can separate all logical aspects of our application into separate containers, make them communicate, and all is (almost) good in the universe.
 
 Yes but, now if we scale up a little, we might encounted a situation. What if you want to deploy your setup in production and use dedicated servers to deal with the different aspects of the system?  
-For instance, you can have a dedicated server to handle all incomming traffic, with a tailor-made `nginx` server running on it. If you want performance at this level, there are some choices to be made and you might end up with a server that is perfectly suited to route traffic and make load balancing, but not for handling lots of SQL requests.
+For instance, you can have a dedicated server to handle all incoming traffic, with a tailor-made `nginx` server running on it. If you want performance at this level, there are some choices to be made and you might end up with a server that is perfectly suited to route traffic and make load balancing, but not for handling lots of SQL requests.
 
 So here you are, buying a second server that you fine-tune to be as performant as possible with the task of dealing with SQL requests.
 
 Or you might forget what I just said and suppose that you prefer to keep the data in-house and use a home-hosted server for the database, but you're okay with renting / buying a server on a provider to handle the routing.
 
-Or you might even craft other scenarii. The point is: it is very likely that some of you find themselves in a situation where the several components of their application stack do not live on the same machine ; that is the point we will address today.
+Or you might even craft other scenarii. The point is: it is very likely that some of you find themselves in a situation where the several components of your application stack do not live on the same machine ; that is the point we will address today.
 
 In the first parts of this article, we learned how to separate our logical units (processes), for instance an `nginx` and a `postgresql` server, run them in their own container, put them in a Docker Network and have them communicate like this. But our problem _now_ is: how do we do when the `nginx` container and the `postgresql` containers are not on the same computer?!
 
@@ -1724,7 +1807,7 @@ And yes we can! Let's see how!
 ### Conceptually Identical, Implementation (almost) Identical
 
 As you must have understood from this little introduction, the docker developers have thought about this use-case, and provided us with a way. And the very nice part is that you will not need to learn much.. yes you guessed it, we will still use Docker Networks.  
-So everything we have just seen together still applies (and this is why you should read the beginning of this article, otherwise it will sound like a gibberish).
+So everything we have just seen together still applies (and this is why you should read the beginning of this article, otherwise it will sound like gibberish).
 
 So what's the difference then?
 
@@ -1734,9 +1817,9 @@ Actually, there is a fourth value: `overlay`, which is part of the magic behind 
 
 #### What to Expect?
 
-Since this article is alredy very long, and you must be tired (although not _that_ much if you followed the breaks I recommended), it's best if I don't discourage you heads on. The really good thing here is that you will have almost nothing new to learn. Really!
+Since this article is already very long, and you must be tired (although not _that_ much if you followed the breaks I recommended), it's best if I don't discourage you heads on. The really good thing here is that you will have almost nothing new to learn. Really!
 
-Everything we saw still applies, and from a developer's point of view, it works almost exactly the same! Considering the time we took to study this, the length of the article, I personally think this is a **great** example of high-level API and abstraction, and I'd like to thanks the docker developers for this.
+Everything we saw still applies, and from a developer's point of view, it works almost exactly the same! Considering the time we took to study this, the length of the article, I personally think this is a **great** example of high-level API and abstraction, and I'd like to thank the docker developers for this.
 
 I deal with code all day long and spend a great deal of cringing on poorly-written code, well the docker devs have made a good job.
 
@@ -1758,9 +1841,9 @@ But obviously, this works only locally, _i.e._ on the same host, because you nee
 
 Now suppose you have another computer (or "host"), say a remote server that has docker installed on it, and you have a container on it. Now you have your own host, with another container running and you'd like to estalish a Docker Network between the two. Docker needs to communicate with the remote computer and exchange information to synchronize the two docker daemons.
 
-This is not handled internally. Why? Because when you tke a step back from this setup, it's not really docker-dependant. The problem reduces to a data synchronization problem, between two (or more) computers. And this is not a new problem, that was "solved" before. Not much data needs to be stored, basically, what container is on which networks, the IP address of the host and the internal IP adress op the Network.
+This is not handled internally. Why? Because when you take a step back from this setup, it's not really docker-dependant. The problem reduces to a data synchronization problem, between two (or more) computers. And this is not a new problem, that was "solved" before. Not much data needs to be stored, basically, what container is on which networks, the IP address of the host and the internal IP adress op the Network.
 
-In order to make this possible, Docker uses a (distributed) Key-Value store. A Key-Value store (KV-store in short) is a svery simple array-like "database". Values are relatively simple, and they are indexed by a key. There exists several popular and well-functionnign KV-stores, and thus Docker leveraged them.
+In order to make this possible, Docker uses a (distributed) Key-Value store. A Key-Value store (KV-store in short) is a very simple array-like "database". Values are relatively simple, and they are indexed by a key. There exists several popular and well-functionning KV-stores, and thus Docker leveraged them.
 
 So the TL;DR of all of this is: in order to set up multi-host (or "overlay") Docker Networks, you install and setup a KV-store, configure your Docker Daemon to interface with it and you're done. How awesome is that?.
 
@@ -1772,7 +1855,7 @@ Okay okay, I know.
 So if you don't have yet a remote server on which you can install Docker, so that you can try multi-host network, fear not, we have a workaround.  
 For such cases, Docker provides us with a new tool, called "docker-machine". "docker-machine" can do several things, one of which is to create optimized, small-size Virtual Machines in which Docker is installed.
 
-I'm going to show you to setup a cluster of docker-machines to emulate some remote servers. In the rest of the article I'm going to try and show both ways: with a server and with docker-machines.
+I'm going to show you how to setup a cluster of docker-machines to emulate some remote servers. In the rest of the article I'm going to try and show both ways: with a server and with docker-machines.
 
 I just want to clarify things, in order to prevent confusion: in our case, docker-machine's only purpose is to create separated virtual machines that we will use as if they were remote servers. That's all.  
 If you do have a remote server on hands, I suggest you use it: you just need to adapt the IP addresses and get rid of the docker-machine commands.
@@ -1785,7 +1868,7 @@ So before we can use docker-machine, we need to install it. The detailed instruc
 
 At the time of this writing, you can find the latest version by doing:
 
-```
+```Bash
 $> curl -L https://github.com/docker/machine/releases/download/v0.12.2/docker-machine-`uname -s`-`uname -m` >/tmp/docker-machine
 $> chmod +x /tmp/docker-machine
 ```
@@ -1805,7 +1888,7 @@ What does this last sentence mean? Let's examine it:
 
 #### Okay Got It, How Are We Going to Use It?
 
-Here, we'r eonly going to use it to create docker hosts locally, _i.e._ on our own computer. Basically, the way to use it is very simple: we use a command to create the virtual hosts. And then when we want to run a docker command in a particular host, we first "point" the docker-machine CLI to the desired virtual host (this is just configuring some ENV variable) and run our command.  
+Here, we're only going to use it to create docker hosts locally, _i.e._ on our own computer. Basically, the way to use it is very simple: we use a command to create the virtual hosts. And then when we want to run a docker command in a particular host, we first "point" the docker-machine CLI to the desired virtual host (this is just configuring some ENV variable) and run our command.  
 It's as simple as that, really.
 
 So in our case, you can think of docker-machine as a sort of "remote" which you points to the desired virtual docker host before running a command. And boom, that's it.
@@ -1824,7 +1907,7 @@ Docker basically supports three KV-store:
 - [ZooKeeper](https://zookeeper.apache.org/)
 - [Etcd](https://coreos.com/etcd)
 
-I've only used Consul, so this is the one I am going to use here. Consul (as most KV-store anyway) is a _distributed_ KV-store, which means it is meant to be used with several instances. All theses instances form a sort of cluster in which the information is stored, with redundancy so that some of the Consul instances in the cluster (some "nodes") can fail (_i.e_ disconnect, crash, die) without the information being lost.
+I've only used Consul, so this is the one I am going to use here. Consul (as most KV-stores anyway) is a _distributed_ KV-store, which means it is meant to be used with several instances. All theses instances form a sort of cluster in which the information is stored, with redundancy so that some of the Consul instances in the cluster (some "nodes") can fail (_i.e_ disconnect, crash, die) without the information being lost.
 
 In our case, we will use docker to install consul. Indeed, rather than installing consul directly on our machine, we will containerize it and run Consul inside a docker container. This way, at the end of this article, you just have to destroy your containers and nothing is messed up in your system, cool no?!
 
@@ -1868,17 +1951,18 @@ kv-store   -        virtualbox   Running   tcp://192.168.99.100:2376           v
 ```
 
 So this command lists the provisionned docker hosts, and for each of them, it displays:
+
 - the name of the host
-- wether it's active or not (more on this just in a minute)
-- the driver used (remember, it's to differentiate between a local host created inside a virtual box, or a hsot provided on a remote cloud provider)
-- the state (wether it's running, stopped, started, etc.)
+- whether it's active or not (more on this just in a minute)
+- the driver used (remember, it's to differentiate between a local host created inside a virtual box, or a host provided on a remote cloud provider)
+- the state (whether it's running, stopped, started, etc.)
 - the URL at which we can join the host (here it's local, but it can the IP address of a remote server)
 - whether it is part of a Docker Swarm (this is a very interesting topic, but for a later Part!)
 - the version of the docker host
 - whether there are errors
 
-Remember that what we have essentially done here is create a "new server" (which in our case, is inside a virtualbox). But now that we have it, we need to _do things_ with it ; exactly as is we were logged on this machine.  
-We _could_ use the virtualbox commands to actually log into the machine and then run the commands. But that would be **very** cumbersome. Instead, you need to remember one of the first things we have undertood about docker and the way the docker client works.
+Remember that what we have essentially done here is create a "new server" (which in our case, is inside a virtualbox). But now that we have it, we need to _do things_ with it ; exactly as if we were logged on this machine.  
+We _could_ use the virtualbox commands to actually log into the machine and then run the commands. But that would be **very** cumbersome. Instead, you need to remember one of the first things we have understood about docker and the way the docker client works.
 
 When you type docker commands in your terminal, you are using the docker client (`docker`). The docker client doesn't do much: it parses your input, check the mandatory arguments, etc. but then it sends all of this to the docker daemon (`dockerd`) which does the heavy work.
 
@@ -1888,12 +1972,12 @@ The docker daemon listens to a socket, and the location of this socket can be co
 I suppose you have guessed it now, but we are going to use the exact same mechanism to talk to our provisionned docker hosts, and for that we'll use ... guess what ... the `URL` we've just seen.
 
 So basically that's it: you can provision as many hosts as you wish with docker-machine, and then _just by setting the correct URL_ you can have the docker client send the commands to it instead of your local docker daemon. And then you have nothing else to do.  
-Isn't that so cool?
+Isn't that cool?
 
-Now, if you're astute you must begin to wonder / fear that you will end up chaining `docker-machine ls` commands, somehow fetching the URL (either an option to `docker-machine ls` or ugly grepping), somehow chaning the address the docker client will try to contact and then issue your actual docker command.  
-This looks cumbersom, and it is...
+Now, if you're astute you must begin to wonder / fear that you will end up chaining `docker-machine ls` commands, somehow fetching the URL (either an option to `docker-machine ls` or ugly grepping), somehow chaining the address the docker client will try to contact and then issue your actual docker command.  
+This looks cumbersome, and it is...
 
-Fortunately, the docker devs have thought about about this and they provided a subcommand `env` that displays the commands necessary to set up the docker client's environement. Yo uuse it like this: `docker-machine env <host-name>`.
+Fortunately, the docker devs have thought about about this and they provided a subcommand `env` that displays the commands necessary to set up the docker client's environement. You use it like this: `docker-machine env <host-name>`.
 
 Let's see what it gives with our container:
 
@@ -1910,8 +1994,8 @@ export DOCKER_MACHINE_NAME="kv-store"
 
 As you see, it sets some variables, the most important being `DOCKER_HOST`, and you see that it matches the `URL` field we saw previously. You surely noticed the `export` clauses, and at the end, there is a comment that explains how to use: you need to use `eval` which is a shell's command, used to set / change environment variables.
 
-So when you have several provisionned hosts, you will switch between them with these `eval $(./docker-machine env <host-name>)` commands, so it's a very simplified procedure.  
-Always make sure you know which (if any) hosts is active before issuing docker commands, you can check which host is active with `docker-machine active` which returns the name of the active host.
+So when you have several provisionned hosts, you will switch between them with these `eval $(docker-machine env <host-name>)` commands, so it's a very simplified procedure.  
+Always make sure you know which (if any) host is active before issuing docker commands, you can check which host is active with `docker-machine active` which returns the name of the active host.
 
 ```Bash
 $> eval $(docker-machine env kv-store)
@@ -1934,14 +2018,14 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 
 As you can see: there is nothing. And this is normal: the host has _just_ been created, so no images yet, no containers, nothing.
 
-"Hey, but now I can't run 'normal' docker commands anymore, I can't see the containers on my machine!""
+"Hey, but now I can't run 'normal' docker commands anymore, I can't see the containers on my machine!"
 
-This is normal: your environement is configured so that your docker client sends the commands to a hsot provisionned by docker-machine. So you just need to unset this, so that it falls back to your local docker daemon.
+This is normal: your environement is configured so that your docker client sends the commands to a host provisionned by docker-machine. So you just need to unset this, so that it falls back to your local docker daemon.
 
 In order to do this, you need to use the `-u, --unset` option of `docker-machine env`. See:
 
 ```Bash
-$> eval "$(./docker-machine env --unset)"
+$> eval "$(docker-machine env --unset)"
 ```
 
 We can tripple check that our commands worked and we are "back to normal":
@@ -1961,7 +2045,7 @@ NAME       ACTIVE   DRIVER       STATE     URL                         SWARM   D
 kv-store   -        virtualbox   Running   tcp://192.168.99.100:2376           v17.06.1-ce   
 ```
 
-(we can see the start disappeared).
+(we can see the star `*` disappeared and was replaced by a dash `-`).
 
 And finally, we can test to run our `docker` commands:
 
@@ -1973,7 +2057,7 @@ nginx               latest              db079554b4d2        6 months ago        
 ubuntu              16.04               104bec311bcd        8 months ago        129MB
 ```
 
-Now you know the basics of how to interact with docker-machine and hte provisionned hosts. Make sure you got it, as we will use it from now on.
+Now you know the basics of how to interact with docker-machine and the provisionned hosts. Make sure you got it, as we will use it from now on.
 
 So! Back to our topic, we were about to set up a KV-store, so let's do that, shall we?
 
@@ -2032,7 +2116,7 @@ Before we move on, I'd like to make a small recap of what is going on, because t
 So here we go, small recap!
 
 In the first (big) part of this article, we learned about Docker Networks and how it can be used to make containers communicate together. This allowed us to do great things and really unlocked a new aspect of Docker that we were previously missing.  
-All of this is very good, but it is limited by the fact that you can only create Docker Networks on your machine and connect local contains to it (understand: containers that are running on the same machine), and we found that if would be _so great_ to extend this exact same mechanism (so we don't have too much _new_ to learn) so that it worked between machines that are _remotely connected_.
+All of this is very good, but it is somewhat limited by the fact that you can only create Docker Networks on your machine and connect local containers to it (understand: containers that are running on the same machine), and we found that if would be _so great_ to extend this exact same mechanism (so we don't have too much _new_ to learn) so that it worked between machines that are _remotely connected_.
 
 This is possible through the use of _Overlay Docker Networks_.  
 But we understand that if we want to have several remote machines talk to each other and maintain a common state, we need a shared medium to synchronize data. For instance, which containers and on what machines are in which Overay Docker Networks, what is this container's internal IP, etc.
@@ -2040,16 +2124,17 @@ But we understand that if we want to have several remote machines talk to each o
 This is achieved by Docker by leveraging the power of distributed Key-Value stores, such as `consul`, the one we use here.
 
 In the last section (_Set Up a Key-Value Store_), we did two things:
-1. we learned how to use `docker-machine` to create virtual hosts on our own machine, to emulate the fact that we have several (physical) servers / hosts (people who _acutally_ have several servers / hosts can bypass this part obviously)
+
+1. we learned how to use `docker-machine` to create virtual hosts on our own machine, to emulate the fact that we have several (physical) servers / hosts (people who actually_ have several servers / hosts can bypass this part obviously)
 2. we actually created one instance (server) of the consul KV-store.
 
-So that's it for the recap: we now have one instance of consul running, and it's reachable at the IP address given by `docker-machine ls`. Ho and by the way, if you need to have _just_ the IP address of a host provisionned by docker-machine, instead of running `docker-machine ls` and grepping, you can use `docker-machine ip <host-name>` and it retursn _just the IP address_, which is pretty handy ;)
+So that's it for the recap: we now have one instance of consul running, and it's reachable at the IP address given by `docker-machine ls`. Oh and by the way, if you need to have _just_ the IP address of a host provisionned by docker-machine, instead of running `docker-machine ls` and grepping, you can use `docker-machine ip <host-name>` and it returns _just the IP address_, which is pretty handy ;)
 
-A last note: `consul` (and KV-store in general) are much more complex systems that we made it appear here. This is completely different and independant from docker: you can use KV-stores to synchronize data across several machines. There is a whole topic about distributed KV-store.  
-In our case, we run _just_ **one** instance of the KV-store (in the host named `kv-store` provisionned by docker-machine), but this is dangerous in real-life applications: if this machines fails and the KV-store cannot be reaches anymore, uyou lost your information.  
-This is why distributed KV-stores are generally run in several instances, on several different machines and theses machines communicate together to maintain a **distributed** set of information, so that if a machine (or a number of machines) fail, the information can still be reached.
+A last note: `consul` (and KV-stores in general) are much more complex systems that we made it appear here. This is completely different and independant from docker: you can use KV-stores to synchronize data across several machines. There is a whole topic about distributed KV-store.  
+In our case, we run _just_ **one** instance of the KV-store (in the host named `kv-store` provisionned by docker-machine), but this is dangerous in real-life applications: if this machines fails and the KV-store cannot be reached anymore, you lost your information.  
+This is why distributed KV-stores are generally run in several instances, on several different machines and these machines communicate together to maintain a **distributed** set of information, so that if a machine (or a number of machines) fail, the information can still be obtained.
 
-We don't do that here because the goal of the topic is to teach about (Overlay) Docker Networks, but if you are going to use Overlay Docker Networks in your production applications, I **strongly** suggest you document about consul (or whatever the KV-store you chose) and learn to properly setup a really distributed cluster, so that you don't lose your information the day one of you machines crashes.
+We don't do that here because the goal of the topic is to teach about (Overlay) Docker Networks, but if you are going to use Overlay Docker Networks in your production applications, I **strongly** suggest you document about consul (or whatever the KV-store you chose) and learn to properly set up a really distributed cluster, so that you don't lose your information the day one of your machines crashes.
 
 Okay! So what's next?!
 
@@ -2058,23 +2143,27 @@ Well now that we have a KV-store up and running, we need to configure the docker
 So now we must add **two** options to our docker daemon:
 
 1. one IP address where it can reach a KV-store (and what type of KV-store it is)
-2. one IP address / network interface on which it should _advertise_. What does that mean? It's easy: suppose we have several docker daemons (on several machines) that should communicate together. Meaning we will have Overlay Docker Networks created, some containers on these machines and some on these containers will be part of the Overlay Docker Networks. But the docker daemons need to talk to each other to synchronize runtime data (_i.e._ "can you resolve this particular IP address, because it doesn't belong to any of my containers", etc.) Well they do so though the "advertised" IP address. Easy!
+2. one IP address / network interface on which it should _advertise_. What does that mean? It's easy: suppose we have several docker daemons (on several machines) that should communicate together. Meaning we will have Overlay Docker Networks created, some containers on these machines and some on these containers will be part of the Overlay Docker Networks. But the docker daemons need to talk to each other to synchronize runtime data (_i.e._ "can you resolve this particular IP address, because it doesn't belong to any of my containers", etc.) Well they do so through the "advertised" IP address. Easy!
 
 In order to configure the docker daemons, we have several ways, I will talk about two:
+
 1. one quick but dirty way (most useful to **test** if the configuration is okay)
 2. the modern, clean way
 
-AS you may know, the docker daemon is now run with `dockerd`, which you can give parameters. The two parameters we want to set now are (in order):
+As you may know, the docker daemon is now run with `dockerd`, which accepts command-line parameters. The two parameters we want to set now are (in order):
+
 1. `cluster-store`
 2. `cluster-advertise` (be careful, this is "advertise" and not "adverti**z**e").
 
 The quick way is simply to launch `dockerd` by hand with the options, the clean way is to create a `systemd` unit file, and set the configuration in it.
 
-First you need to stop you docker daemon (be warned that it will stop all of your containers). If you had launched it with `dockerd` previously, then hit `CTRL + C`, if you had launched it with `systemd`, then type `systemd stop docker`.
+When you want to configure your own docker daemon, you first need to stop it (be warned that it will stop all of your containers). If you had launched it with `dockerd` previously, then hit `CTRL + C`, if you had launched it with `systemd`, then type `systemd stop docker`.
 
-Now we are going to set the parameters, first by command-line (to quickly test).
+But in our case we are not going to set up our local docker daemon (we could, but if you forget to remove the setup later, it will mess up your daemon, and you might have a tough time remembering it), instead we will provision hosts with docker-machine and configure _their_ docker daemons.
 
-We need to set the IP address of our consul server, which is the IP address of the proviosnned docker host `kv-store` so let's get it:
+Now we are going to set the parameters.
+
+We need to set the IP address of our consul server, which is the IP address of the provisionned docker host `kv-store` so let's get it:
 
 ```Bash
 $> docker-machine ip kv-store
@@ -2083,65 +2172,49 @@ $> docker-machine ip kv-store
 ```
 
 (This is obviously subject to change on your machine, use your own returned IP address).  
-Now we need to port on which the consul server listens ; we configured it to be `8500` in the previous `docker run` command (scroll backup, you will see `-p 8500:8500`).  
+Now we need to set port on which the consul server listens ; we configured it to be `8500` in the previous `docker run` command (scroll back up, you will see `-p 8500:8500`).  
 And lastly, we need to tell docker that it's a consul cluster, and not a zookeeper or etcd. So the full parameter for the first option is: `--cluster-store=consul://192.168.99.100:8500`.
 
 That was not too hard, right?
 
-The second option is even simpler, it takes the form: `<ip-or-interface>:<port>`. Remember that this is the `IP:port` that other (potentially remote) docker hosts will contact your host at. So make sure this `IP:port` combinaison is open an reachable from your remote servers.  
-In our case, since we are only dealing with local provisionned (virtual) hosts, we can use `127.0.0.1`. The port must be `2376` (this is docker's protocol). When / If you are using a remote server (instead of a local provisionned virtual host), use `<interface:IP>`, for instance `<eth1:2376>` or `<wlan0:IP>`.
+The second option is even simpler, it takes the form: `<ip-or-interface>:<port>`. Remember that this is the `IP:port` that other (potentially remote) docker hosts will contact your host at. So make sure this `IP:port` combinaison is open and reachable from your remote servers.  
+The port must be `2376` (this is docker's protocol).
 
-So you will have something like `--cluster-advertise=127.0.0.1:2376` in our case, adapt if you need.
+So you will have something like `--cluster-advertise=eth1:2376` in our case (the hosts provisionned by docker-machine has an interface called `eth1`), adapt if you need.
 
 ### Creating And Using Overlay Docker Networks
 
-Now that we have our options, we can either launch the daemon by hand, like this: `dockerd --cluster-store=consul://192.168.99.100:8500 --cluster-advertise=127.0.0.1:2376` or edit the systemd configuration file to add the options on the `ExecStart=` line.
+Now that we have our options, if you were to configure your local docker daemon you could either launch the daemon by hand, like this: `dockerd --cluster-store=consul://192.168.99.100:8500 --cluster-advertise=<interface>:2376` or edit the systemd configuration file to add the options on the `ExecStart=` line. When it is started, nothing will look different than before, but now the daemon would know where to join a KV-store and thus the Overlay Docker Network feature would be enabled.
 
-Chose the option you want and start the docker daemon. When it is started, nothing looks different than before, but now the daemon knows where to join a KV-store and thus the Overlay Docker Network feature is enabled.
+Let's create our first Overlay Docker Network.
 
-Let's create our first OVerlay Docker Network.
+As I said earlier, everything we saw with traditionnal Docker Networks still applies ; Overlay Newtorks are built upon this. So we still create an Overlay Docker Network with `docker network create`, but now we add the `-d, --driver` option to tell docker that is not "bridge" anymore (it's the default we have been using until now) but "overlay".
 
-As I said earlier, everything we saw with traditionnal Docker Networks still applies ; Overlay Newtorks are built upon this. So we still create an Overlay Docker Network with `docker networks create`, but now we had the `-d, --driver` option to tell docker that is not's "bridge" anymore (it's the default we have been using until now) but "overlay". All in one, you do it like this:
+Just before we do that, though, we will provision another host with docker-machine, whose docker daemon we will configure (in order not to touch ours).
 
-```Bash
-$> docker network create -d overlay TestOverlay
-2c5c37a080f5592bb245ea3fd6e37653c86e56f62dd10c8e1c40ab72708b26c3
-```
-
-And then you can check with
-
-```Bash
-$> docker network ls
-NETWORK ID          NAME                DRIVER              SCOPE
-9aedc6a27184        CustomNetwork       bridge              local
-70ff2194d229        MyFirstNetwork      bridge              local
-2c5c37a080f5        TestOverlay         overlay             global
-2d610b04d998        bridge              bridge              local
-2683c3824f8f        host                host                local
-a84e731c4387        none                null                local
-```
-
-Now you should spot the new network which differ because its `DRIVER` option now lists `overlay` and its `SCOPE` is `global`.
-
-So far so good, but nothing too fancy. The magic will come with a second host.
-
-### Provisionning a Second Host
+### Provisionning Another Host
 
 For now we have all in all **two** hosts:
 
-- our local machine, the one on which we have been experimenting with until now
+- our local machine, the one on which we have been experimenting with until now and which we won't modify
 - the `kv-store` (virtual) machine that we provisionned with docker-machine
 
-But when it comes to docker, we really only have one, because `kv-store` is **only** running the KV-store (consul), but it is not a docker host. So we will now provision another docker host: one on which a docker daemon will be running and where we will create containers.
+Okay, that is all nice and all, but:
+
+- `kv-store` doesn't _really_ count because we only created it in order to have an instance of `consul` running. We _could_ totally run some other containers on it, but I'm afraid this might confuse some of you. So for the sake of our little test setup, let's forget about `kv-store`.
+- it leaves our own docker daemon, on our local machine. We could also run containers on our local docker daemon to take part of the overlay docker network, **but** as I have explained a few screens up, in order for a docker daemon to work with overlay networks, you need to configure it. So we would need to configure our docker daemon. And then there's a risk you forget about the configuration and later find that your docker daemon has troubles starting or is very slow because of this. So we won't use our local docker daemon for the sake of this test.
+
+This leaves us with basically 0 hosts to make our test. So we will create two of them with docker-machine and then problem fixed! Easy!  
+_Note: you can totally use your own docker daemon, it works the same, make sure to remove the configuration when you're done!_.
 
 Let's do this!
 
-This time we will call it `second-host` (I have a talent for naming...). Before I give the command, I want to clarify one or two things.
+As this will be the first host we will actually make tests on, we will naturally call it `first-host` (I have a talent for naming...). Before I give the command, I want to clarify one or two things.
 
-So we will provision a virtual host with docker-machine (obviously skip this part if you are using a real, remote server). If the Docker dev team went to all the trouble of creating this `docker-machine` tool, you can imagine they tailor-made it to suit docker needs.  
+So we will provision a virtual host with docker-machine. If the Docker dev team went to all the trouble of creating this `docker-machine` tool, you can imagine they tailor-made it to suit docker needs.  
 So when you provision a new host with `docker-machine` and the `-d virtualbox` driver, it's not just a simple Linux host ; the whole goal of `docker-machine` is to install and configure the docker daemon automatically.
 
-Do you remember the configuration we had to do with our own docker daemon (namely setting `--cluster-store` and `--cluster-advertise`)? Well, we will obviously need to do this for the provisionned hosts too, nothing is magic: the automatically installed docker daemon _still needs_ to know about the KV-store.
+Do you remember the configuration we have talked about regarding how we would set up our own docker daemon (namely setting `--cluster-store` and `--cluster-advertise`)? Well, we will obviously need to do this for the provisionned hosts too, nothing is magic: the automatically installed docker daemon _still needs_ to know about the KV-store.
 
 But fortunately, we won't need to log into the virtual host and edit the configuration by hand: `docker-machine` has an option, `--engine-opt` which is used to pass configuration options to the docker daemon it will automatically install.
 
@@ -2153,7 +2226,7 @@ So now we can pass these two options. We need two things:
 Enough talk, let's do it now!
 
 ```Bash
-$> docker-machine create -d virtualbox --engine-opt="cluster-store=consul://$(docker-machine ip kv-store):8500" --engine-opt="cluster-advertise=eth1:2376" second-host
+$> docker-machine create -d virtualbox --engine-opt="cluster-store=consul://$(docker-machine ip kv-store):8500" --engine-opt="cluster-advertise=eth1:2376" first-host
 
 Running pre-create checks...
 (second-host) Default Boot2Docker ISO is out-of-date, downloading the latest release...
@@ -2168,7 +2241,7 @@ Creating machine...
 (second-host) Check network to re-create \if needed...
 (second-host) Waiting for an IP...
 Waiting for machine to be running, this may take a few minutes...
-Detecting operating system of created instance...
+Detecting operating system of created instance...second
 Waiting for SSH to be available...
 Detecting the provisioner...
 Provisioning with boot2docker...
@@ -2177,7 +2250,7 @@ Copying certs to the remote machine...
 Setting Docker configuration on the remote daemon...
 Checking connection to Docker...
 Docker is up and running!
-To see how to connect your Docker Client to the Docker Engine running on this virtual machine, run: docker-machine env second-host
+To see how to connect your Docker Client to the Docker Engine running on this virtual machine, run: docker-machine env first-host
 ```
 
 We can check that we have a new host:
@@ -2187,23 +2260,47 @@ $> docker-machine ls
 
 NAME          ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER        ERRORS
 kv-store      -        virtualbox   Running   tcp://192.168.99.100:2376           v17.06.1-ce   
-second-host   -        virtualbox   Running   tcp://192.168.99.101:2376           v17.07.0-ce   
+first-host    -        virtualbox   Running   tcp://192.168.99.101:2376           v17.07.0-ce   
 ```
 
-(Funnily enough, it seems to have updated the docker version between the time I created `second-host`!).
+(Funnily enough, it seems to have updated the docker version between the time I created `first-host`!).
+
+#### Time to Create the Overlay Network
+
+So _now_ we can execute the command we have talked about, let's first activate `first-host`: `eval $(docker-machine env first-host)` and run the command:
+
+```Bash
+$> docker network create -d overlay TestOverlay
+2c5c37a080f5592bb245ea3fd6e37653c86e56f62dd10c8e1c40ab72708b26c3
+```
+
+And then you can check with
+
+```Bash
+$> docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+2c5c37a080f5        TestOverlay         overlay             global
+2d610b04d998        bridge              bridge              local
+2683c3824f8f        host                host                local
+a84e731c4387        none                null                local
+```
+
+Now you should spot the new network which differ because its `DRIVER` option now lists `overlay` and its `SCOPE` is `global`.
+
+So far so good, but nothing too fancy. The magic will come when we add a second host. Let's create `second-host` right now with the same command: `docker-machine create -d virtualbox --engine-opt="cluster-store=consul://$(docker-machine ip kv-store):8500" --engine-opt="cluster-advertise=eth1:2376" second-host`
 
 Now I am going to print a startled cat image because I want your attention:
 
 ![](/images/startled-cat.jpg "Pay Attention Now!")
 
-Okay, now I've got your attention, please follow what we we are about to do, and what happens.
+Okay, now I've got your attention, please follow what we are about to do, and what happens.
 
 First, we are going to _activate_ the `second-host` host with `eval "$(docker-machine env second-host)"`.
 
 Let's make sure it worked:
 
 ```Bash
-$> dokcer-machine active
+$> docker-machine active
 second-host
 ```
 
@@ -2247,11 +2344,11 @@ So yes, what just happened is very cool: we have essentially created a new host 
 
 Obviously, the _somehow_ is explained easily: the docker daemon contacted the KV-store thanks to the `--cluster-store` option we passed earlier.
 
-But the very cool thing to take away from this, is that by configuring a KV-store and settin up the docker daemons correctly, _we can have Docker (Overlay) Networks shared amonst **completely independant** machines (hosts)_!
+But the very cool thing to take away from this, is that by configuring a KV-store and setting up the docker daemons correctly, _we can have Docker (Overlay) Networks shared among **completely independant** machines (hosts)_!
 
 Please, **please** take a few _seconds_ (minutes if you need) to re-read this last sentence and make _absolutely sure_ you understand the consequences and the _power_ it will give us.
 
-Seriously, I know it seems like I do a big deal out of this, but this **is** a big deal. Think about everything we learned in this Part: breaking the isolation between containers in a controlled manner, embedded DNs server that automatically resolves the containers' names to their correct IP etc... well everything is still working, and on top of that... _it is now **spread across several servers**_.
+Seriously, I know it seems like I do a big deal out of this, but this **is** a big deal. Think about everything we learned in this Part: breaking the isolation between containers in a controlled manner, embedded DNS server that automatically resolves the containers' names to their correct IP etc... well everything is still working, and on top of that... _it is now **spread across several servers**_.
 
 We have just (almost freely) extended our nice little comfy zone of isolated-yet-communicating containers _between servers_. Now, from a docker point of view, when you have containers `C1` and `C2` inside Docker Network `N`, it doesn't matter if `C1` and `C2` are on the same server `S1` or if one is on server `S1` and one of server `S2`.
 
@@ -2261,21 +2358,21 @@ I'm waiting.
 
 ...
 
-Good. Now we can wrap up things.
+Good. Now we can wrap things up.
 
 ### Creating Containers And Be Amazed
 
-We are not going to make _extended_ tests because as I said several times, the Overlay Networks work exactly the same as Bridge Network. And we have covered Bridge Networks.  
+We are not going to make _extended_ tests because as I said several times, the Overlay Networks work exactly the same as Bridge Network. And we have covered Bridge Networks quite extensively.  
 We will still make one or two basic tests to convince ourselves that it does appear to work, but aside from this, you can apply what you already know.
 
-But _still_, it deserves a small test nonetheless. We are going to create a container on `second-host` and a container on our own local machine, obviously we are going to connect them to the `TestOverlay` Docker Network and we are going to see if they can talk to each other.
+But _still_, it deserves a small test nonetheless. We are going to create a container on `first-host` and another one on `second-host`, obviously we are going to connect them to the `TestOverlay` Docker Network and we are going to see if they can talk to each other.
 
-Make sure `second-host` is `active` with `docker-machine active`. If not, make it active with `eval $(docker-machine env second-host)`.
+Make sure `first-host` is `active` with `docker-machine active`. If not, make it active with `eval $(docker-machine env first-host)`.
 
 Then create a container, as usual, connecting it to the network:
 
 ```Bash
-$> docker run -itd --name remote_cont --net TestOverlay nginx
+$> docker run -itd --name cont_one --net TestOverlay nginx
 Unable to find image 'nginx:latest' locally
 latest: Pulling from library/nginx
 94ed0c431eb5: Pull complete
@@ -2286,62 +2383,62 @@ Status: Downloaded newer image for nginx:latest
 4f5771a78fd9cdc59b982228a7de8410bc6d7f26f473b0d63a6c57523845f5d
 ```
 
-So we created a container named `remote_cont` on the host `second-host` and it is part of the `TestOverlay` network. We can quickly check it is indeed part of the network:
+You might have remarked that this time I used image `nginx` and not `net-test`. The reason for this is that `net-test` is an image we have created (we have written a (small) Dockerfile and built on our local machine. Since we did not host our Dockerfile on the Docker Hub or in any private docker registry, we cannot easily have this image on the hosts. So we use a standard image `nginx` which happens to have `ping` installed natively).
+
+So we created a container named `cont_one` on the host `first-host` and it is part of the `TestOverlay` network. We can quickly check it is indeed part of the network:
 
 ```Bash
 $> docker network inspect TestOverlay
 [...]
-
 "Containers": {
-            "4f5771a78fd9cdc59b982228a7de8410bc6d7f26f473b0d63a6c57523845f5d5": {
-                "Name": "remote_cont",
-                "EndpointID": "e78ea760c30bb3cfff942b26a1182a24d2c4555cbd0e6417b08594c29c0a5bd3",
-                "MacAddress": "02:42:0a:00:00:02",
-                "IPv4Address": "10.0.0.2/24",
+            "398de04064c10b6ef2be606474620aa77c50910497213f723c870eb1a0508f6c": {
+                "Name": "cont_one",
+                "EndpointID": "a68620105c26a6bf9eb91f7c968fb4987ce7d3cca36c13edd1cc5c7fba63476e",
+                "MacAddress": "02:42:0a:00:00:03",
+                "IPv4Address": "10.0.0.3/24",
                 "IPv6Address": ""
-            }
-        },
-[...]
+            },
+        }
 ```
 
 So that's good: the container _is_ connected.
 
-Now, let's "get back" to sending commands to our own local docker daemon, so we _de-activate_ `second-host`. `eval $(docker-machine env -u)`.
+Now, let's activate `second-host` with `eval $(docker-machine env second-host)`.
 
-A quick `docker ps` shows you that the `remote_cont` is not listed anymore.
+A quick `docker ps` shows you that the `cont_one` is not listed anymore.
 
-What would happen if we ran `docker network inspect TestOverlay` on this host? Remember this is our local host now, it is **not** the host on which the container `remote_cont` was created and exists?
+What would happen if we ran `docker network inspect TestOverlay` on this host? Remember this is `second-host` now, it is **not** the host on which the container `cont_one` was created and exists?
 
 Easiest way to find out out is to try:
 
 ```Bash
-$> docker network inspest TestOverlay
+$> docker network inspect TestOverlay
 
 [...]
 "Containers": {
-            "ep-e78ea760c30bb3cfff942b26a1182a24d2c4555cbd0e6417b08594c29c0a5bd3": {
-                "Name": "remote_cont",
-                "EndpointID": "e78ea760c30bb3cfff942b26a1182a24d2c4555cbd0e6417b08594c29c0a5bd3",
-                "MacAddress": "02:42:0a:00:00:02",
-                "IPv4Address": "10.0.0.2/24",
+            "ep-a68620105c26a6bf9eb91f7c968fb4987ce7d3cca36c13edd1cc5c7fba63476e": {
+                "Name": "cont_one",
+                "EndpointID": "a68620105c26a6bf9eb91f7c968fb4987ce7d3cca36c13edd1cc5c7fba63476e",
+                "MacAddress": "02:42:0a:00:00:03",
+                "IPv4Address": "10.0.0.3/24",
                 "IPv6Address": ""
             }
-        },
+        }
 [...]
 ```
 
-So... we **do** see that it lists a container `remote_cont` that is connected to this network, but if you look closely, the ID is not the same. It starts with `ep-` which it typical of containers listed that are not present on ths current docker host (it's not important for the moment, just keep this in a corner of your mind).
+So... we **do** see that it lists a container `cont_one` that is connected to this network, but if you look closely, the ID is not the same. It starts with `ep-` which it typical of containers listed that are not present on the current docker host (it's not important for the moment, just keep this in a corner of your mind).
 
-So this is still pretty interesting: we are on a docker host where container `remote_cont` does not exist, it was never there but _still_ it is listed when inspecting the Docker Network. All of this is possible, you guessed it, thanks to the KV-store that stores information.  
+So this is still pretty interesting: we are on a docker host where container `cont_one` does not exist, it was never there but _still_ it is listed when inspecting the Docker Network. All of this is possible, you guessed it, thanks to the KV-store that stores information.  
 You would note however, that the `EndpointID` is the same on both output, and this is what is used internally by docker to actually identify the container.
 
-Oh and one last thing you might have noticed: the IP address if very different thant the IP addresses we have dealt with until now. They used to be in `172.X.Y.Z`, but now they are in `10.X.Y.Z`. So that is another way of telling you are in an Overlay network.
+Oh and one last thing you might have noticed: the IP address if very different than the IP addresses we have dealt with until now. They used to be in `172.X.Y.Z`, but now they are in `10.X.Y.Z`. So that is another way of telling you are in an Overlay network.
 
-Now let's add a container to this network, on this host!
+Now let's add a container to this network, on this host (`second-host`)!
 
 ```Bash
-$> docker run -itd --name local_cont --net TestOverlay nginx
-e9bf582914beb21901955d0961b67443b6f2f634f86b4a3d1e1af7e2b196bc04
+$> docker run -itd --name cont_two --net TestOverlay nginx
+c6a71d242ae2fcdbe4c546af01b84a144c94a28eca1ff2f81dfc3de3927f7a3d
 ```
 
 A quick inspection of the network shows that it worked as expected:
@@ -2350,51 +2447,53 @@ A quick inspection of the network shows that it worked as expected:
 $> docker network inspect TestOverlay
 
 [...]
- "Containers": {
-            "e9bf582914beb21901955d0961b67443b6f2f634f86b4a3d1e1af7e2b196bc04": {
-                "Name": "local_cont",
-                "EndpointID": "6ff26f6dad3fc64fbbd54a1f99cd88b10713d07acb6a7996f61a4dc460627bfb",
+"Containers": {
+            "c6a71d242ae2fcdbe4c546af01b84a144c94a28eca1ff2f81dfc3de3927f7a3d": {
+                "Name": "cont_two",
+                "EndpointID": "3211821c4e5cc07a5c64ef2569d207b5997143b0592df29de4cedd9c7c104d3e",
+                "MacAddress": "02:42:0a:00:00:05",
+                "IPv4Address": "10.0.0.5/24",
+                "IPv6Address": ""
+            },
+            "ep-a68620105c26a6bf9eb91f7c968fb4987ce7d3cca36c13edd1cc5c7fba63476e": {
+                "Name": "cont_one",
+                "EndpointID": "a68620105c26a6bf9eb91f7c968fb4987ce7d3cca36c13edd1cc5c7fba63476e",
                 "MacAddress": "02:42:0a:00:00:03",
                 "IPv4Address": "10.0.0.3/24",
                 "IPv6Address": ""
-            },
-            "ep-e78ea760c30bb3cfff942b26a1182a24d2c4555cbd0e6417b08594c29c0a5bd3": {
-                "Name": "remote_cont",
-                "EndpointID": "e78ea760c30bb3cfff942b26a1182a24d2c4555cbd0e6417b08594c29c0a5bd3",
-                "MacAddress": "02:42:0a:00:00:02",
-                "IPv4Address": "10.0.0.2/24",
-                "IPv6Address": ""
             }
         }
+[...]
 ```
 
-And now's the real test: we will enter container `local_cont` and try to ping `remote_cont`, which is on a different host, remember.
+And now's the real test: we will enter container `cont_two` and try to ping `cont_one`, which is on a different host, remember.
 
 ```Bash
-$> docker exec -it local_cont bash
-#> ping -c 3 remote_cont
-PING remote_cont (10.0.0.2): 56 data bytes
-64 bytes from 10.0.0.2: icmp_seq=0 ttl=64 time=0.387 ms
-64 bytes from 10.0.0.2: icmp_seq=1 ttl=64 time=0.383 ms
-64 bytes from 10.0.0.2: icmp_seq=2 ttl=64 time=0.380 ms
-^C--- remote_cont ping statistics ---
-3 packets transmitted, 3 packets received, 0% packet loss
-round-trip min/avg/max/stddev = 0.380/0.383/0.387/0.000 ms
+$> docker exec -it cont_two bash
+root@c6a71d242ae2:/# ping -c 4 cont_one
+PING cont_one (10.0.0.3): 56 data bytes
+64 bytes from 10.0.0.3: icmp_seq=0 ttl=64 time=0.402 ms
+64 bytes from 10.0.0.3: icmp_seq=1 ttl=64 time=0.359 ms
+64 bytes from 10.0.0.3: icmp_seq=2 ttl=64 time=0.411 ms
+64 bytes from 10.0.0.3: icmp_seq=3 ttl=64 time=0.417 ms
+--- cont_one ping statistics ---
+4 packets transmitted, 4 packets received, 0% packet loss
+round-trip min/avg/max/stddev = 0.359/0.397/0.417/0.023 ms
 ```
 
 And it works!
 
-So basically, containers `local_cont` and `remote_cont` are talking to each other as if they were in the same private network (LAN) even though they are on two different hosts (computers) that can be anywhere in teh world.
+So basically, containers `cont_one` and `cont_two` are talking to each other as if they were in the same private network (LAN) even though they are on two different hosts (computers) that can be anywhere in the world.
 
 This is fantastic. Seriously, you don't understand how fantastic this is.
 
 What that means is that you can keep thinking and designing your Docker stacks correctly, _i.e._ separate the different logical units (processes) in different containers (one container for the web server, one container for the database, one container for the redis cache, one container for service monitoring, etc.), but now you don't have to cram all of these containers into a single machine...  
-You can have as many machines (hosts) as you want, you can fine-tune the configuration of each machine to fit its use case and on top of this, "all you have to do" is configure your docker daemons and your KV-store correctly, and thanks to this, you can create Docker Networks across these machines and connect the containers to them.  
+You can have as many machines (hosts) as you want, you can fine-tune the configuration of each machine to fit its use-case and on top of this, "all you have to do" is configure your docker daemons and your KV-store correctly, and thanks to this, you can create Docker Networks across these machines and connect the containers to them.  
 The containers are just contacting other containers by using their container names, the embedded DNS server takes care of the routing for you and you can essentially keep thinking and designing your stack as a big LAN network (minus the network latency of course).
 
 This is incredibly useful.
 
-I mean a small overview of this might be something like: you buy a server which is optimize for bandwidth but doesn't have lots of disk space to put all your `nginx` containers on it, you can buy a server which has a lot of RAM to put your redis cache on it and you can buy servers with _a lot_ of disk space to put your `postgresql` containers on it.  
+I mean a small overview of this might be something like: you buy a server which is optimized for bandwidth but doesn't have lots of disk space to put all your `nginx` containers on it, you can buy a server which has a lot of RAM to put your redis cache on it and you can buy servers with _a lot_ of disk space to put your `postgresql` containers on it.  
 Once you have done that, configure the docker daemons, create your Overlay Docker Networks, connect your containers and This. Just. Works.  
 _Everything_ is abstracted for you.
 
@@ -2408,28 +2507,51 @@ It's not much, but I found that it was very easy to avoid these and a good part 
 
 So here they are:
 
-- The first obvious thing to know / remember is to have setup your docker daemon to work with the KV-store, for that, you need to have the two options `--cluster-store` with:
+- The first obvious thing to know / remember is to have set up your docker daemons to work with the KV-store, for that, you need to have the two options `--cluster-store` with:
     1. a protocol (for instance `consul://`)
     2. an IP address (the IP address of one of the KV-store node, make sure this address is reachable by your host)
     3. the KV-store port (for consul this is `8500` if you did not change the default configuration)
 Make sure the IP address and the port are opened by your firewall.
 The second option is `--cluster-advertise` which needs the network interface (`eth0`, `wlan0`, etc.) that your docker host will use to advertise its presence, and the port (this is `2376` if you did not change Docker's settings)
 - If you set these up with a systemd unit file (most likely `/usr/lib/systemd/docker.conf.d/docker.conf`), then **make sure you added a newline at the end of your file**. I have spent countless hours reviewing everything: the addresses were correct, the ports were correct, the access were authorized, everything should be okay yet nothing worked, etc. And then I started "looking the keys inside the fridge" and one day I opened the systemd file with another editor which automatically added the newline and it worked. So... always, **always** end your config files with a newline at the end. This one, I guarantee **will** save you hours!
-- Make sure to look at the docker daemon logs (either by starting it by hand, or looking at `journald`), but the logs might indicate. For instance, if you get the `--cluster-advertise` option wrong, you will see a message like this:
+- Make sure to look at the docker daemon logs (either by starting it by hand, or looking at `journald`), but the logs might indicate that something's off. For instance, if you get the `--cluster-advertise` option wrong, you will see a message like this:
 
 ```Bash
 WARN[0001] Multi-Host overlay networking requires cluster-advertise(x.x.x.x) to be configured with a local ip-address that is reachable within the cluster
 ```
 
-And that indicates that it doesn't work.
+And that indicates that it doesn't work.  
 - Another thing that is worth knowing is that the two options `--cluster-store` and `--cluster-advertise` are **both** necessary for Overlay networks to work, but they are not related to the same thing, and they work independently of each other.  
-To make it short, `--cluster-store` allows the docker daemon to contact the KV-store and fetch information. This is what makes `docker network ls` shows the Overlay Docker Networks (if you misconfigured it, only the Bridge-based Docker Networks will show up), and this is what makes `docker network inspect <name-of-overlay-network>` shows the information about which contains are connected, their IP addresses inside the network etc. So even if you only configure `--cluster-store` or if you misconfigured `--cluster-advertise`, this will still show you and you might think that everything is working as it should.
+To make it short, `--cluster-store` allows the docker daemon to contact the KV-store and fetch information. This is what makes `docker network ls` shows the Overlay Docker Networks (if you misconfigured it, only the Bridge-based Docker Networks will show up), and this is what makes `docker network inspect <name-of-overlay-network>` shows the information about which containers are connected, their IP addresses inside the network etc. So even if you only configure `--cluster-store` or if you misconfigured `--cluster-advertise`, this will still show you and you might think that everything is working as it should.
 
 The second option, `--cluster-advertise` is what makes the docker hosts able to communicate and synchronize together. This is what makes containers in different hosts able to talke to each other. It handles the routing. So if you have configured `--cluster-store` together but `--cluster-advertise` is misconfigured, then when trying to ping a container in another host, you will get `92 bytes from 523ed8b20522 (10.0.0.4): Destination Host Unreachable` for instance.  
-This is very important because you need to be able to diagnose your problem. The TL;DR is that:
+This is very important because you need to be able to diagnose your problem.
+
+The TL;DR is that:
 
 - if you don't see the Overlay Networks with `docker network ls`, then it's a problem of `--cluster-store` (so either it points to the wrong IP address, the wrong port, or the IP address / port are not opened by the firewall, or the KV-store is simply not running, etc.)
 - if you can see the Overlay Networks but your containers fail to talk to each other (`Destination Host Unreachable`, `No route to Host`, `Timeout`), then it's a problem of `--cluster-advertise` (wrong network interface, wrong port (`2376`), the network interface is not opened on the outside, firewall blocking (port `2376`), etc.).
+
+#### Security Concerns
+
+A last but _Very_ important part remains: security. I love security and I find this is a fascinating topic. However this article is too long already to dwell too long on this. But I have to say a word or two about this.  
+In case you are using only Bridge-based networks like we did in the first part of this article, you don't need to worry too much about security: since everything is on your computer (containers are all on teh same host, they communicate via `iptables` on the host), it's fine. Nothing is leaked.  
+Just make sure that if you open ports, you don't open them on the outside by accident (remember that `-p 8080:8080` will bind the container's `8080` ports to the host's `8080` ports on all interfaces whereas -p 10.20.3.4:8080:8080` will do the same, but only on the host's `10.20.3.4` network interface).
+
+If you are using Overlay Docker Networks, however, the story is a bit different. As we have seen, we need instance(s) of a KV-store (consul, ZooKeeper, Etcd, etc.). Even though we only used one server of `consul` here, I told you that in real setups, you _should definitely_ have several, so that you have redundancy. These instances must communicate together over the Internet. And by default, the communication if not encrypted. So it's completely unacceptable.  
+In the same spirit, your docker daemons must communicate with the KV-stores (that's the `--cluster-store` option) and together (that's the `--cluster-advertise` option). And these communications are also unencrypted. This is dangerous and unacceptable for anything else that basic tests (like in this article).
+
+You have several possibilities. As far as KV-stores are concerned, if you read their documentation, you should find instructions about how to setup a cluster of `consul` over SSL / TLS (it's also obviously true for the other KV-stores).
+
+As for communications between docker hosts, it depends on your setup. In a real, solid and serious setup where you rent servers on a server provider only, you can usually find servers that are part of an internal private network. Meaning that the servers have two network interfaces, let's say `eth0` and `eth1`. `eth0` is the public network interface, the one connected on the Internet, and `eth1` is not connected to the Internet, but is part of an Internal, fast internal network. And you can use this private `eth1` interface to connect to your other server, securely. This way you don't need to encrypt the communication between the docker daemons, because it's not reachable from the outside.
+
+But this only works between servers on the same provider and that are part of this network. When it is not the case, I found that a relatively good, simple and easy-to-implement solution was to create a VPN tunnel between the hosts with the docker daemons. So basically on your docker daemons you would have `tun0` network interfaces, which you would use to `--cluster-advertise`. Obviously you would have set up your VPN tunnel with encryption, so this way the communication if encrypted.
+
+You can also do the same for the communication between the docker hosts and the KV-stores.
+
+What is also possible for these things is to use `nginx` as a (reverse) proxy. On each each, `nginx` can communicate with the servers (either the docker daemon or the KV-store) on an internal network interface (`localhost`) and proxy the answers over a TLS/SSL encrypted communication.
+
+Anyway, this is a topic in itself so I can't cover it in just a paragraph, but make sure you take this into accounts ; because otherwise you will have problems!
 
 Here you go, with these sets of indications, I'm confident that you should be able to diagnose the vast majority of the problems you might be having with Overlay Networks, and if you still can't, either [should me an email](mailto:nschoe@protonmail.com), and go to `#docker` and I'm here (@nschoe).
 
@@ -2453,10 +2575,10 @@ Part V is also a sort of milestone, because with it we have finsihed learning ab
 - In Parts I and II we learned about Docker itself, what this is (because it's always important to know what we are talking about) and we learned about the difference between an image and a container: an image is a "recipe" to setup an environment and a container is one instance of it. We also learned that containers should be ephemeral, they are designed to be short-lived: A. Container. Is. Just. A. Process.  
 We always should be able to stop, destroy and rebuild a container.
 - In Part III, we learned about how to write Dockerfiles and how to build our custom images, with this we can now design a tailor-made environment that suits the software you want to run.
-- Until Part IV we had a problem: if we were making short-lived container, container that could be shut down at any moment, even destroyed, we would lose data. So we needed to have a way to "save" data somewhere. This is where Part IV comes with Docker Volumes.  
+- Until Part IV we had a problem: if we were making short-lived containers, containers that could be shut down at any moment, even destroyed, we would lose data. So we needed to have a way to "save" data somewhere. This is where Part IV comes with Docker Volumes.  
 We learned how to make data persistent by storing it in Docker Volumes (which have a different life cycle than containers), and we also lerned how to share data between the host and the containers.  
 I emphasized on the fact that even though storing data in a volume and sharing data with the hosts were both grouped under the name "Docker Volumes", it was two different things and one should not be used in the place of the other.
-- But even then we still had a problem: we were able to make ephemeral containers ("just processes", remember?), we could store our important data in Volumes, but if we wanted to have only one (logical) process per container, we were limited to very simple setup, because if out setup involved several containers, it was impossible to make them communicate one with another. Part V solves this by introducting the concept of Docker Networks, which -as the name implies- is a way to make several containers communicate with each other.  
+- But even then we still had a problem: we were able to make ephemeral containers ("just processes", remember?), we could store our important data in Volumes, but if we wanted to have only one (logical) process per container, we were limited to very simple setups, because if our setup involved several containers, it was impossible to make them communicate one with another. Part V solves this by introducting the concept of Docker Networks, which -as the name implies- is a way to make several containers communicate with each other.  
 We then extended this concept to several machines, so that distant, remote servers running a docker daemon (and running containers of their own) could **easily** have networked container, basically for free ("for free" here means that we don't have anything new to learn and almost nothing new to setup).
 
 Now, after those 5 Parts you can do (almost) anything, and you can sure make very complex stuff. For information, I have been working with Docker for a couple of years now, we have a pretty complex client stack and they rely on what we have been learning on these first 5 Parts.
@@ -2469,21 +2591,21 @@ Yes...
 I mean... for **this article**, yes, but not for the series, no! Fear not.  
 We are not done with Docker yet, not even close, we have lots of cool stuff to discover, and I want to keep writing about them (as long as you still want to read!).
 
-There are in particular two very important topics that I want to discuss, and I'm sure you have heard of them, they have:
+There are in particular two very important topics that I want to discuss, and I'm sure you have heard of them, they are:
 
 - Docker Swarm, and
 - docker-compose
 
-Both of them are very powerful tools, which open your world of possibility even more, but they are (alas) too often, _much_ too often confused with what I call "vanialla docker". They sound attractive (and they are!) but beginners almost always jump to these tools too early. And then they must deal with all the notions we have covered in these 5 Parts, **plus** docker-compose and Docker Swarm.  
-As logn as they follow "click-here, do this" tutorials, it's fine, but when they start havign problems on their own, they can't diagnose where the problems comes from.
+Both of them are very powerful tools, which open your world of possibility even more, but they are (alas) too often, _much_ too often confused with what I call "vanilla docker". They sound attractive (and they are!) but beginners almost always jump to these tools too early. And then they must deal with all the notions we have covered in these 5 Parts, **plus** docker-compose and Docker Swarm.  
+As long as they follow "click-here, do this" tutorials, it's fine, but when they start having problems on their own, they can't diagnose where the problems comes from.
 
 This is why I haven't talked about any of these tools yet. I tried to give you all the tools that I could think of to really understand what docker does, what docker is composed of and what docker can do. Now that you have these tools, I feel that we are ready to talk about Docker Swarm and docker-compose. So I think the next articles are going to be about them.  
 I'm not sure of the order yet, so I prefer not to give that away (in fear of disappointment), but "It Is Coming.".
 
 In the mean time, I hope you will play with Docker and what we have learned together in these first 5 Parts, and I urge you to email me if anything is still not clicking, or if you feel the way I introduced a topic is still misleading (also I take "thank-you" email as well!).  
 If you have any topic that you would like me to cover in upcoming Parts, also feel free to suggest by email.  
-Also, last piece of news: I'm thinking about going freelance and take on some consulting missions regarding docker (maybe advise people on the way to build their stacks, maybe actually build the stack, review some already exising stack, etc.).
+Also, last piece of news: I'm thinking about going freelance and take on some consulting missions regarding docker (maybe advise people on the way to build their stacks, maybe actually build the stack, review some already existing stack, etc.).
 
-If you think you might be interested, don't hesitate to contact me. I still don't have the official status, etc, it's something I have been thinking about for quite some time. Now that this series is taking some traction, I feel it would be a good time. Anyway, for whatever reason, yo ucan contact me on [nschoe@protonmail.com](mailto:ns.schoe@protonmail.com).
+If you think you might be interested, don't hesitate to contact me. I still don't have the official status, etc, it's something I have been thinking about for quite some time. Now that this series is taking some traction, I feel it would be a good time. Anyway, for whatever reason, you can contact me on [nschoe@protonmail.com](mailto:ns.schoe@protonmail.com).
 
 I hope you liked the article, and see you in Part VI!

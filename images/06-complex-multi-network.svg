@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   style=""
+   width="793px"
+   height="331px"
+   viewBox="0 0 793 331"
+   id="svg3677"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="06-complex-multi-network.svg">
+  <metadata
+     id="metadata3737">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1058"
+     id="namedview3735"
+     showgrid="false"
+     inkscape:zoom="2.1765448"
+     inkscape:cx="396.5"
+     inkscape:cy="165.5"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg3677" />
+  <defs
+     id="defs3679" />
+  <g
+     style="pointer-events:visiblePainted"
+     transform="translate(378.5 513)"
+     image-rendering="auto"
+     shape-rendering="auto"
+     id="g3681">
+    <rect
+       fill="rgb(255,140,0)"
+       stroke="rgb(0,0,0)"
+       width="793"
+       height="331"
+       x="-378.5"
+       y="-513"
+       stroke-opacity="1"
+       stroke-width="0"
+       stroke-linecap="butt"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="0"
+       id="rect3683" />
+    <rect
+       fill="rgb(182,228,189)"
+       stroke="rgb(176,201,217)"
+       width="348"
+       height="109"
+       x="-349.5"
+       y="-402"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-dasharray="2,2"
+       stroke-dashoffset="1"
+       stroke-linecap="square"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3685" />
+    <rect
+       fill="rgb(182,207,228)"
+       stroke="rgb(176,201,217)"
+       width="94"
+       height="66"
+       x="-313.5"
+       y="-388"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-linecap="butt"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3687" />
+    <rect
+       fill="rgb(182,228,189)"
+       stroke="rgb(176,201,217)"
+       width="348"
+       height="109"
+       x="51.5"
+       y="-402"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-dasharray="2,2"
+       stroke-dashoffset="1"
+       stroke-linecap="square"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3689" />
+    <rect
+       fill="rgb(228,182,213)"
+       stroke="rgb(176,201,217)"
+       width="94"
+       height="66"
+       x="-123.5"
+       y="-388"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-linecap="butt"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3691" />
+    <rect
+       fill="rgb(255,208,39)"
+       stroke="rgb(176,201,217)"
+       width="94"
+       height="66"
+       x="86.5"
+       y="-380.5"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-linecap="butt"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3693" />
+    <rect
+       fill="rgb(228,182,213)"
+       stroke="rgb(176,201,217)"
+       width="94"
+       height="66"
+       x="282.5"
+       y="-380.5"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-linecap="butt"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3695" />
+    <g
+       transform="translate(-234.5 -312)"
+       id="g3697">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(59 0)"
+         id="text3699">DockerNetwork</text>
+    </g>
+    <g
+       transform="translate(-311 -364.5)"
+       id="g3701">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(44.5 0)"
+         id="text3703">Container A</text>
+    </g>
+    <g
+       transform="translate(166.5 -312)"
+       id="g3705">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(59 0)"
+         id="text3707">DockerNetwork</text>
+    </g>
+    <g
+       transform="translate(-121 -364.5)"
+       id="g3709">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(44.5 0)"
+         id="text3711">Container C</text>
+    </g>
+    <g
+       transform="translate(89 -357)"
+       id="g3713">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(44.5 0)"
+         id="text3715">Container B</text>
+    </g>
+    <g
+       transform="translate(285 -357)"
+       id="g3717">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(44.5 0)"
+         id="text3719">Container C</text>
+    </g>
+  </g>
+</svg>

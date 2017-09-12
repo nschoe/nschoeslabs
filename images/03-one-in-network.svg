@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   style=""
+   width="793px"
+   height="331px"
+   viewBox="0 0 793 331"
+   id="svg3732"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="03-one-in-network.svg">
+  <metadata
+     id="metadata3780">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1058"
+     id="namedview3778"
+     showgrid="false"
+     inkscape:zoom="2.1765448"
+     inkscape:cx="396.5"
+     inkscape:cy="165.5"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg3732" />
+  <defs
+     id="defs3734" />
+  <g
+     style="pointer-events:visiblePainted"
+     transform="translate(572 452.75)"
+     image-rendering="auto"
+     shape-rendering="auto"
+     id="g3736">
+    <rect
+       fill="rgb(182,207,228)"
+       stroke="rgb(176,201,217)"
+       width="94"
+       height="66"
+       x="-308.5"
+       y="-260"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-linecap="butt"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3738" />
+    <rect
+       fill="rgb(182,207,228)"
+       stroke="rgb(176,201,217)"
+       width="94"
+       height="66"
+       x="-124.5"
+       y="-260"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-linecap="butt"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3740" />
+    <rect
+       fill="rgb(255,140,0)"
+       stroke="rgb(0,0,0)"
+       width="793"
+       height="331"
+       x="-572"
+       y="-452.75"
+       stroke-opacity="1"
+       stroke-width="0"
+       stroke-linecap="butt"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="0"
+       id="rect3742" />
+    <rect
+       fill="rgb(182,228,189)"
+       stroke="rgb(176,201,217)"
+       width="348"
+       height="109"
+       x="-349.5"
+       y="-402"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-dasharray="2,2"
+       stroke-dashoffset="1"
+       stroke-linecap="square"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3744" />
+    <rect
+       fill="rgb(182,207,228)"
+       stroke="rgb(176,201,217)"
+       width="94"
+       height="66"
+       x="-222.5"
+       y="-388"
+       stroke-opacity="1"
+       stroke-width="1"
+       stroke-linecap="butt"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       fill-opacity="1"
+       id="rect3746" />
+    <g
+       transform="translate(-275 -236.5)"
+       id="g3748">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(13.5 0)"
+         id="text3750">two</text>
+    </g>
+    <g
+       transform="translate(-97 -236.5)"
+       id="g3752">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(19.5 0)"
+         id="text3754">three</text>
+    </g>
+    <g
+       transform="translate(-236.5 -312)"
+       id="g3756">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(61 0)"
+         id="text3758">CustomNetwork</text>
+    </g>
+    <g
+       transform="translate(-189 -364.5)"
+       id="g3760">
+      <text
+         font-family="Georgia"
+         font-size="16px"
+         font-style="normal"
+         font-weight="normal"
+         text-anchor="middle"
+         fill="rgb(0,0,0)"
+         fill-opacity="1"
+         dy="1em"
+         transform="translate(13.5 0)"
+         id="text3762">one</text>
+    </g>
+  </g>
+</svg>
